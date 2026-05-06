@@ -224,4 +224,81 @@ describe('FunctionSystems', () => {
       expect(screen.queryByTestId('risk-indicator')).not.toBeInTheDocument();
     });
   });
+
+  describe('state stability across navigation', () => {
+    // Regression: pressing Continue must not rotate system IDs nor drop fields
+    // such as `importance`, `serviceIds`, or multi-function links. See PLAN.md
+    // "Wizard state stability" for the full rationale.
+    it('does not remove or recreate existing systems on Continue', async () => {
+      const user = userEvent.setup();
+      const removeSystem = vi.fn();
+      const addSystem = vi.fn().mockReturnValue('new-id');
+      mockContext = createMockContext({
+        architecture: {
+          ...createMockContext().architecture!,
+          systems: [
+            {
+              id: 's1',
+              name: 'Xero',
+              type: 'finance',
+              hosting: 'cloud',
+              status: 'active',
+              functionIds: ['fn-1'],
+              serviceIds: ['svc-1'],
+              importance: 5,
+            },
+          ],
+        },
+        removeSystem,
+        addSystem,
+      });
+
+      render(<FunctionSystems />);
+      await user.click(screen.getByRole('button', { name: /^continue$/i }));
+
+      expect(removeSystem).not.toHaveBeenCalled();
+      // Continue must not create a duplicate system with the same name.
+      const recreatedXero = addSystem.mock.calls.find(
+        ([payload]) => payload?.name === 'Xero',
+      );
+      expect(recreatedXero).toBeUndefined();
+    });
+
+    it('preserves multi-function links on Continue', async () => {
+      const user = userEvent.setup();
+      const updateSystem = vi.fn();
+      const removeSystem = vi.fn();
+      mockContext = createMockContext({
+        architecture: {
+          ...createMockContext().architecture!,
+          systems: [
+            {
+              id: 's1',
+              name: 'Notion',
+              type: 'document_management',
+              hosting: 'cloud',
+              status: 'active',
+              functionIds: ['fn-1', 'fn-2'],
+              serviceIds: [],
+            },
+          ],
+        },
+        updateSystem,
+        removeSystem,
+      });
+
+      render(<FunctionSystems />);
+      await user.click(screen.getByRole('button', { name: /^continue$/i }));
+
+      expect(removeSystem).not.toHaveBeenCalled();
+      // If updateSystem was called for s1, functionIds must still contain both.
+      for (const [id, updates] of updateSystem.mock.calls) {
+        if (id === 's1' && Array.isArray(updates?.functionIds)) {
+          expect(updates.functionIds).toEqual(
+            expect.arrayContaining(['fn-1', 'fn-2']),
+          );
+        }
+      }
+    });
+  });
 });

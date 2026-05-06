@@ -205,4 +205,48 @@ describe('FunctionTagger', () => {
       expect.objectContaining({ functionIds: expect.arrayContaining(['fn-id']) }),
     );
   });
+
+  describe('state stability across navigation', () => {
+    // Regression: revisiting must not rotate function IDs nor drop custom
+    // functions. See PLAN.md "Wizard state stability".
+    it('does not remove existing standard functions on Continue', async () => {
+      const user = userEvent.setup();
+      mockContext = createMockContext({
+        architecture: {
+          ...createMockContext().architecture!,
+          functions: [
+            { id: 'existing-fn-1', name: 'Finance', type: 'finance', isActive: true },
+          ],
+          systems: [
+            { id: 'sys-1', name: 'Xero', type: 'finance', hosting: 'cloud', status: 'active', functionIds: ['existing-fn-1'], serviceIds: ['svc-1'] },
+          ],
+        },
+      });
+
+      render(<FunctionTagger />);
+      await user.click(screen.getByRole('button', { name: /continue/i }));
+
+      expect(removeFunctionMock).not.toHaveBeenCalledWith('existing-fn-1');
+    });
+
+    it('preserves custom functions on Continue', async () => {
+      const user = userEvent.setup();
+      mockContext = createMockContext({
+        architecture: {
+          ...createMockContext().architecture!,
+          functions: [
+            { id: 'custom-1', name: 'Volunteer engagement', type: 'custom', isActive: true },
+          ],
+        },
+      });
+
+      render(<FunctionTagger />);
+      // Select something so Continue is enabled
+      const checkboxes = screen.getAllByRole('checkbox');
+      await user.click(checkboxes[0]);
+      await user.click(screen.getByRole('button', { name: /continue/i }));
+
+      expect(removeFunctionMock).not.toHaveBeenCalledWith('custom-1');
+    });
+  });
 });

@@ -55,6 +55,7 @@ interface SystemCost {
 }
 
 interface SystemEntry {
+  id: string;
   name: string;
   type: SystemType;
   vendor: string;
@@ -62,6 +63,10 @@ interface SystemEntry {
   techFreedomScore?: TechFreedomScore;
   matchedTool?: KnownTool;
   cost?: SystemCost;
+  // Preserve-on-write so cross-step links survive back-and-forth navigation.
+  serviceIds: string[];
+  functionIds: string[];
+  status: 'active' | 'planned' | 'retiring' | 'legacy';
 }
 
 const COST_PERIOD_OPTIONS: { value: CostPeriod; label: string }[] = [
@@ -97,31 +102,40 @@ const RISK_COLORS: Record<string, string> = {
 
 export function ServiceSystems() {
   const router = useRouter();
-  const { architecture, addSystem, removeSystem } = useArchitecture();
+  const { architecture, addSystem, updateSystem, removeSystem } = useArchitecture();
 
   const services = architecture?.services ?? [];
   const techFreedomEnabled = architecture?.metadata?.techFreedomEnabled === true;
   const [activeServiceIndex, setActiveServiceIndex] = useState(0);
   const [formData, setFormData] = useState<SystemFormData>(emptyForm);
-  // Track systems added per service (by service id) — hydrate from architecture on re-visit
-  const [systemsByService, setSystemsByService] = useState<
-    Record<string, SystemEntry[]>
-  >(() => {
-    const existing: Record<string, SystemEntry[]> = {};
+  // Architecture is the source of truth. See function-systems.tsx for the
+  // rationale; same pattern keyed by serviceId here.
+  const [entries, setEntries] = useState<Map<string, SystemEntry>>(() => {
+    const m = new Map<string, SystemEntry>();
+    for (const sys of architecture?.systems ?? []) {
+      m.set(sys.id, {
+        id: sys.id,
+        name: sys.name,
+        type: sys.type,
+        vendor: sys.vendor ?? '',
+        hosting: sys.hosting,
+        techFreedomScore: sys.techFreedomScore,
+        cost: sys.cost,
+        serviceIds: sys.serviceIds ?? [],
+        functionIds: sys.functionIds ?? [],
+        status: sys.status,
+      });
+    }
+    return m;
+  });
+  const [byService, setByService] = useState<Record<string, string[]>>(() => {
+    const m: Record<string, string[]> = {};
     for (const sys of architecture?.systems ?? []) {
       for (const svcId of sys.serviceIds) {
-        if (!existing[svcId]) existing[svcId] = [];
-        existing[svcId].push({
-          name: sys.name,
-          type: sys.type,
-          vendor: sys.vendor ?? '',
-          hosting: sys.hosting,
-          techFreedomScore: sys.techFreedomScore,
-          cost: sys.cost,
-        });
+        (m[svcId] ??= []).push(sys.id);
       }
     }
-    return existing;
+    return m;
   });
   const [currentMatch, setCurrentMatch] = useState<KnownTool | null>(null);
   const [costBreakdown, setCostBreakdown] = useState<string | null>(null);
@@ -161,93 +175,122 @@ export function ServiceSystems() {
   const handleAddSystem = useCallback(() => {
     if (!formData.name.trim() || !activeService) return;
 
-    const system: SystemEntry = {
-      name: formData.name.trim(),
-      type: formData.type,
-      vendor: formData.vendor.trim(),
-      hosting: formData.hosting,
-    };
+    const name = formData.name.trim();
+    const type = formData.type;
+    const vendor = formData.vendor.trim();
+    const hosting = formData.hosting;
 
-    if (techFreedomEnabled && currentMatch) {
-      system.techFreedomScore = currentMatch.score;
-      system.matchedTool = currentMatch;
-    }
+    const techFreedomScore = techFreedomEnabled && currentMatch ? currentMatch.score : undefined;
+    const matchedTool = techFreedomEnabled && currentMatch ? currentMatch : undefined;
 
+    let cost: SystemCost | undefined;
     const costAmount = parseFloat(formData.costAmount);
     if (!isNaN(costAmount) && costAmount >= 0) {
-      system.cost = {
+      cost = {
         amount: costAmount,
         period: formData.costPeriod,
         model: formData.costModel,
       };
     }
 
-    setSystemsByService((prev) => ({
-      ...prev,
-      [activeService.id]: [...(prev[activeService.id] ?? []), system],
-    }));
+    // Cross-service merge: same name → existing system gains a serviceId.
+    const existing = Array.from(entries.values()).find(
+      (e) => e.name.toLowerCase() === name.toLowerCase(),
+    );
+
+    if (existing) {
+      if (!existing.serviceIds.includes(activeService.id)) {
+        const nextServiceIds = [...existing.serviceIds, activeService.id];
+        updateSystem(existing.id, { serviceIds: nextServiceIds });
+        setEntries((prev) => {
+          const next = new Map(prev);
+          next.set(existing.id, { ...existing, serviceIds: nextServiceIds });
+          return next;
+        });
+        setByService((prev) => ({
+          ...prev,
+          [activeService.id]: [...(prev[activeService.id] ?? []), existing.id],
+        }));
+      }
+    } else {
+      const id = addSystem({
+        name,
+        type,
+        vendor: vendor || undefined,
+        hosting,
+        status: 'active',
+        functionIds: [],
+        serviceIds: [activeService.id],
+        ...(techFreedomScore ? { techFreedomScore } : {}),
+        ...(cost ? { cost } : {}),
+      });
+
+      setEntries((prev) => {
+        const next = new Map(prev);
+        next.set(id, {
+          id,
+          name,
+          type,
+          vendor,
+          hosting,
+          techFreedomScore,
+          matchedTool,
+          cost,
+          serviceIds: [activeService.id],
+          functionIds: [],
+          status: 'active',
+        });
+        return next;
+      });
+      setByService((prev) => ({
+        ...prev,
+        [activeService.id]: [...(prev[activeService.id] ?? []), id],
+      }));
+    }
 
     setFormData(emptyForm());
     setCurrentMatch(null);
     setCostBreakdown(null);
-  }, [formData, activeService, techFreedomEnabled, currentMatch]);
+  }, [formData, activeService, techFreedomEnabled, currentMatch, addSystem, updateSystem, entries]);
 
   const handleRemoveSystem = useCallback(
     (serviceId: string, index: number) => {
-      setSystemsByService((prev) => ({
+      const id = byService[serviceId]?.[index];
+      if (!id) return;
+      const entry = entries.get(id);
+
+      setByService((prev) => ({
         ...prev,
         [serviceId]: (prev[serviceId] ?? []).filter((_, i) => i !== index),
       }));
+
+      const remainingServiceIds = (entry?.serviceIds ?? []).filter((s) => s !== serviceId);
+
+      if (remainingServiceIds.length === 0) {
+        removeSystem(id);
+        setEntries((prev) => {
+          const next = new Map(prev);
+          next.delete(id);
+          return next;
+        });
+      } else {
+        updateSystem(id, { serviceIds: remainingServiceIds });
+        if (entry) {
+          setEntries((prev) => {
+            const next = new Map(prev);
+            next.set(id, { ...entry, serviceIds: remainingServiceIds });
+            return next;
+          });
+        }
+      }
     },
-    [],
+    [byService, entries, removeSystem, updateSystem],
   );
 
   const handleContinue = useCallback(() => {
-    // Clear existing systems to avoid duplicates on re-visit (idempotent)
-    const existingSystems = architecture?.systems ?? [];
-    for (const sys of existingSystems) {
-      removeSystem(sys.id);
-    }
-
-    // De-duplicate systems that appear across multiple services.
-    // Key by name (lowercased) to group serviceIds.
-    const systemMap = new Map<
-      string,
-      { entry: SystemEntry; serviceIds: string[] }
-    >();
-
-    for (const svc of services) {
-      const systems = systemsByService[svc.id] ?? [];
-      for (const sys of systems) {
-        const key = sys.name.toLowerCase();
-        const existing = systemMap.get(key);
-        if (existing) {
-          if (!existing.serviceIds.includes(svc.id)) {
-            existing.serviceIds.push(svc.id);
-          }
-        } else {
-          systemMap.set(key, { entry: sys, serviceIds: [svc.id] });
-        }
-      }
-    }
-
-    // Save all systems to architecture
-    for (const { entry, serviceIds } of systemMap.values()) {
-      addSystem({
-        name: entry.name,
-        type: entry.type,
-        vendor: entry.vendor || undefined,
-        hosting: entry.hosting as 'cloud' | 'on_premise' | 'hybrid' | 'unknown',
-        status: 'active',
-        functionIds: [],
-        serviceIds,
-        ...(entry.techFreedomScore ? { techFreedomScore: entry.techFreedomScore } : {}),
-        ...(entry.cost ? { cost: entry.cost } : {}),
-      });
-    }
-
+    // Architecture is up-to-date via incremental writes; just navigate.
     router.push('/wizard/services/importance');
-  }, [services, systemsByService, addSystem, removeSystem, architecture, router]);
+  }, [router]);
 
   if (!architecture) {
     return (
@@ -270,7 +313,11 @@ export function ServiceSystems() {
     );
   }
 
-  const currentSystems = systemsByService[activeService?.id] ?? [];
+  const currentSystems: SystemEntry[] = activeService
+    ? (byService[activeService.id] ?? [])
+        .map((id) => entries.get(id))
+        .filter((e): e is SystemEntry => Boolean(e))
+    : [];
 
   return (
     <div className="space-y-8">
@@ -288,7 +335,7 @@ export function ServiceSystems() {
       <div role="tablist" aria-label="Organisation services" className="flex flex-wrap gap-2">
         {services.map((svc, index) => {
           const isActive = index === activeServiceIndex;
-          const svcSystems = systemsByService[svc.id] ?? [];
+          const svcSystems = byService[svc.id] ?? [];
           return (
             <button
               key={svc.id}

@@ -57,6 +57,7 @@ interface SystemCost {
 }
 
 interface SystemEntry {
+  id: string;
   name: string;
   type: SystemType;
   vendor: string;
@@ -64,6 +65,12 @@ interface SystemEntry {
   techFreedomScore?: TechFreedomScore;
   matchedTool?: KnownTool;
   cost?: SystemCost;
+  // Preserve-on-write: any field we don't edit here must round-trip intact
+  // when we call updateSystem so cross-step links (importance, serviceIds,
+  // owner, etc.) survive back-and-forth navigation.
+  serviceIds: string[];
+  status: 'active' | 'planned' | 'retiring' | 'legacy';
+  functionIds: string[];
 }
 
 const FUNCTION_TO_SYSTEM_TYPE: Record<StandardFunction | 'custom', SystemType> = {
@@ -130,7 +137,7 @@ const RISK_COLORS: Record<string, string> = {
 
 export function FunctionSystems() {
   const router = useRouter();
-  const { architecture, addSystem, removeSystem } = useArchitecture();
+  const { architecture, addSystem, updateSystem, removeSystem } = useArchitecture();
 
   const functions = architecture?.functions ?? [];
   const techFreedomEnabled = architecture?.metadata?.techFreedomEnabled === true;
@@ -138,25 +145,37 @@ export function FunctionSystems() {
   const [formData, setFormData] = useState<SystemFormData>(() =>
     functions.length > 0 ? emptyFormForFunction(functions[0].type) : emptyFormForFunction('custom'),
   );
-  // Track systems added per function (by function id) — hydrate from architecture on re-visit
-  const [systemsByFunction, setSystemsByFunction] = useState<
-    Record<string, SystemEntry[]>
-  >(() => {
-    const existing: Record<string, SystemEntry[]> = {};
+  // Architecture is the source of truth for system data. Local state holds
+  // an optimistic mirror keyed by stable system id so the UI reacts instantly
+  // even though the mocked test architecture isn't reactive. Every mutation
+  // also calls the architecture context, so navigation no longer needs a
+  // destroy-recreate Continue handler.
+  const [entries, setEntries] = useState<Map<string, SystemEntry>>(() => {
+    const m = new Map<string, SystemEntry>();
+    for (const sys of architecture?.systems ?? []) {
+      m.set(sys.id, {
+        id: sys.id,
+        name: sys.name,
+        type: sys.type,
+        vendor: sys.vendor ?? '',
+        hosting: sys.hosting,
+        techFreedomScore: sys.techFreedomScore,
+        cost: sys.cost,
+        serviceIds: sys.serviceIds ?? [],
+        status: sys.status,
+        functionIds: sys.functionIds ?? [],
+      });
+    }
+    return m;
+  });
+  const [byFunction, setByFunction] = useState<Record<string, string[]>>(() => {
+    const m: Record<string, string[]> = {};
     for (const sys of architecture?.systems ?? []) {
       for (const fnId of sys.functionIds) {
-        if (!existing[fnId]) existing[fnId] = [];
-        existing[fnId].push({
-          name: sys.name,
-          type: sys.type,
-          vendor: sys.vendor ?? '',
-          hosting: sys.hosting,
-          techFreedomScore: sys.techFreedomScore,
-          cost: sys.cost,
-        });
+        (m[fnId] ??= []).push(sys.id);
       }
     }
-    return existing;
+    return m;
   });
   const [currentMatch, setCurrentMatch] = useState<KnownTool | null>(null);
   const [costBreakdown, setCostBreakdown] = useState<string | null>(null);
@@ -176,8 +195,13 @@ export function FunctionSystems() {
     );
   }, [activeFunction, orgType, orgSize]);
 
-  // Filter out suggestions that are already added
-  const currentSystems = systemsByFunction[activeFunction?.id] ?? [];
+  // Derive the visible list from local state — entries are kept in sync with
+  // architecture as the user mutates them.
+  const currentSystems: SystemEntry[] = activeFunction
+    ? (byFunction[activeFunction.id] ?? [])
+        .map((id) => entries.get(id))
+        .filter((e): e is SystemEntry => Boolean(e))
+    : [];
   const addedNames = new Set(currentSystems.map((s) => s.name.toLowerCase()));
   const filteredSuggestions = suggestions.filter(
     (sug) => !addedNames.has(sug.name.toLowerCase()),
@@ -189,36 +213,84 @@ export function FunctionSystems() {
 
       const match = findMatchingTool(sug.name, KNOWN_TOOLS);
 
-      const system: SystemEntry = {
-        name: match?.name ?? sug.name,
-        type: match
-          ? guessSystemTypeFromCategory(match.category)
-          : FUNCTION_TO_SYSTEM_TYPE[activeFunction.type] ?? 'other',
-        vendor: match?.provider ?? '',
-        hosting: match ? 'cloud' : 'unknown',
-      };
+      const name = match?.name ?? sug.name;
+      const type: SystemType = match
+        ? guessSystemTypeFromCategory(match.category)
+        : FUNCTION_TO_SYSTEM_TYPE[activeFunction.type] ?? 'other';
+      const vendor = match?.provider ?? '';
+      const hosting: 'cloud' | 'on_premise' | 'hybrid' | 'unknown' = match ? 'cloud' : 'unknown';
 
-      if (techFreedomEnabled && match) {
-        system.techFreedomScore = match.score;
-        system.matchedTool = match;
-      }
+      const techFreedomScore = techFreedomEnabled && match ? match.score : undefined;
+      const matchedTool = techFreedomEnabled && match ? match : undefined;
 
+      let cost: SystemCost | undefined;
       const staffCount = architecture?.organisation.staffCount ?? DEFAULT_STAFF[orgSize];
       if (match) {
         const estimate = estimateToolCost(match.pricing, match.estimatedAnnualCost, staffCount);
-        system.cost = {
+        cost = {
           amount: estimate.annualTotal,
           period: 'annual',
           model: estimate.annualTotal === 0 ? 'free' : 'subscription',
         };
       }
 
-      setSystemsByFunction((prev) => ({
+      // If a system with the same name already exists across any tab, merge
+      // by adding this function id rather than creating a duplicate.
+      const existing = Array.from(entries.values()).find(
+        (e) => e.name.toLowerCase() === name.toLowerCase(),
+      );
+
+      if (existing) {
+        if (existing.functionIds.includes(activeFunction.id)) return;
+        const nextFunctionIds = [...existing.functionIds, activeFunction.id];
+        updateSystem(existing.id, { functionIds: nextFunctionIds });
+        setEntries((prev) => {
+          const next = new Map(prev);
+          next.set(existing.id, { ...existing, functionIds: nextFunctionIds });
+          return next;
+        });
+        setByFunction((prev) => ({
+          ...prev,
+          [activeFunction.id]: [...(prev[activeFunction.id] ?? []), existing.id],
+        }));
+        return;
+      }
+
+      const id = addSystem({
+        name,
+        type,
+        vendor: vendor || undefined,
+        hosting,
+        status: 'active',
+        functionIds: [activeFunction.id],
+        serviceIds: [],
+        ...(techFreedomScore ? { techFreedomScore } : {}),
+        ...(cost ? { cost } : {}),
+      });
+
+      setEntries((prev) => {
+        const next = new Map(prev);
+        next.set(id, {
+          id,
+          name,
+          type,
+          vendor,
+          hosting,
+          techFreedomScore,
+          matchedTool,
+          cost,
+          serviceIds: [],
+          status: 'active',
+          functionIds: [activeFunction.id],
+        });
+        return next;
+      });
+      setByFunction((prev) => ({
         ...prev,
-        [activeFunction.id]: [...(prev[activeFunction.id] ?? []), system],
+        [activeFunction.id]: [...(prev[activeFunction.id] ?? []), id],
       }));
     },
-    [activeFunction, techFreedomEnabled, orgSize, architecture],
+    [activeFunction, techFreedomEnabled, orgSize, architecture, addSystem, updateSystem, entries],
   );
 
   const updateField = useCallback(
@@ -252,102 +324,134 @@ export function FunctionSystems() {
   const handleAddSystem = useCallback(() => {
     if (!formData.name.trim() || !activeFunction) return;
 
-    const system: SystemEntry = {
-      name: formData.name.trim(),
-      type: formData.type,
-      vendor: formData.vendor.trim(),
-      hosting: formData.hosting,
-    };
+    const name = formData.name.trim();
+    const type = formData.type;
+    const vendor = formData.vendor.trim();
+    const hosting = formData.hosting;
 
-    if (techFreedomEnabled && currentMatch) {
-      system.techFreedomScore = currentMatch.score;
-      system.matchedTool = currentMatch;
-    }
+    const techFreedomScore = techFreedomEnabled && currentMatch ? currentMatch.score : undefined;
+    const matchedTool = techFreedomEnabled && currentMatch ? currentMatch : undefined;
 
+    let cost: SystemCost | undefined;
     const costAmount = parseFloat(formData.costAmount);
     if (!isNaN(costAmount) && costAmount >= 0) {
-      system.cost = {
+      cost = {
         amount: costAmount,
         period: formData.costPeriod,
         model: formData.costModel,
       };
     }
 
-    setSystemsByFunction((prev) => ({
+    const id = addSystem({
+      name,
+      type,
+      vendor: vendor || undefined,
+      hosting,
+      status: 'active',
+      functionIds: [activeFunction.id],
+      serviceIds: [],
+      ...(techFreedomScore ? { techFreedomScore } : {}),
+      ...(cost ? { cost } : {}),
+    });
+
+    setEntries((prev) => {
+      const next = new Map(prev);
+      next.set(id, {
+        id,
+        name,
+        type,
+        vendor,
+        hosting,
+        techFreedomScore,
+        matchedTool,
+        cost,
+        serviceIds: [],
+        status: 'active',
+        functionIds: [activeFunction.id],
+      });
+      return next;
+    });
+    setByFunction((prev) => ({
       ...prev,
-      [activeFunction.id]: [...(prev[activeFunction.id] ?? []), system],
+      [activeFunction.id]: [...(prev[activeFunction.id] ?? []), id],
     }));
 
     setFormData(emptyFormForFunction(activeFunction.type));
     setCurrentMatch(null);
     setCostBreakdown(null);
-  }, [formData, activeFunction, techFreedomEnabled, currentMatch]);
+  }, [formData, activeFunction, techFreedomEnabled, currentMatch, addSystem]);
 
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const handleRemoveSystem = useCallback(
     (functionId: string, index: number) => {
-      setSystemsByFunction((prev) => ({
+      const id = byFunction[functionId]?.[index];
+      if (!id) return;
+      const entry = entries.get(id);
+
+      // Drop this function id from the system's membership.
+      setByFunction((prev) => ({
         ...prev,
         [functionId]: (prev[functionId] ?? []).filter((_, i) => i !== index),
       }));
+
+      const remainingFunctionIds = (entry?.functionIds ?? []).filter((f) => f !== functionId);
+
+      if (remainingFunctionIds.length === 0) {
+        // No tabs left — remove the system entirely.
+        removeSystem(id);
+        setEntries((prev) => {
+          const next = new Map(prev);
+          next.delete(id);
+          return next;
+        });
+      } else {
+        // Still linked elsewhere — just unlink, don't destroy.
+        updateSystem(id, { functionIds: remainingFunctionIds });
+        if (entry) {
+          setEntries((prev) => {
+            const next = new Map(prev);
+            next.set(id, { ...entry, functionIds: remainingFunctionIds });
+            return next;
+          });
+        }
+      }
       if (editingIndex === index) setEditingIndex(null);
     },
-    [editingIndex],
+    [byFunction, entries, removeSystem, updateSystem, editingIndex],
   );
 
   const handleUpdateSystemCost = useCallback(
     (functionId: string, index: number, amount: string, period: string, model: string) => {
-      setSystemsByFunction((prev) => {
-        const systems = [...(prev[functionId] ?? [])];
-        const parsed = parseFloat(amount);
-        if (!isNaN(parsed) && parsed >= 0) {
-          systems[index] = {
-            ...systems[index],
-            cost: {
-              amount: parsed,
-              period: period as 'monthly' | 'annual',
-              model: parsed === 0 ? 'free' as const : model as 'subscription' | 'perpetual' | 'free' | 'unknown',
-            },
-          };
-        } else {
-          // Clear cost if amount is empty/invalid
-          const { cost: _, ...rest } = systems[index];
-          systems[index] = rest;
-        }
-        return { ...prev, [functionId]: systems };
+      const id = byFunction[functionId]?.[index];
+      if (!id) return;
+      const entry = entries.get(id);
+      if (!entry) return;
+
+      const parsed = parseFloat(amount);
+      let nextCost: SystemCost | undefined;
+      if (!isNaN(parsed) && parsed >= 0) {
+        nextCost = {
+          amount: parsed,
+          period: period as 'monthly' | 'annual',
+          model: parsed === 0 ? ('free' as const) : (model as 'subscription' | 'perpetual' | 'free' | 'unknown'),
+        };
+      }
+
+      updateSystem(id, { cost: nextCost });
+      setEntries((prev) => {
+        const next = new Map(prev);
+        next.set(id, { ...entry, cost: nextCost });
+        return next;
       });
     },
-    [],
+    [byFunction, entries, updateSystem],
   );
 
   const handleContinue = useCallback(() => {
-    // Clear existing systems to avoid duplicates on re-visit
-    const existingSystems = architecture?.systems ?? [];
-    for (const sys of existingSystems) {
-      removeSystem(sys.id);
-    }
-
-    // Save all systems to architecture
-    for (const fn of functions) {
-      const systems = systemsByFunction[fn.id] ?? [];
-      for (const sys of systems) {
-        addSystem({
-          name: sys.name,
-          type: sys.type,
-          vendor: sys.vendor || undefined,
-          hosting: sys.hosting as 'cloud' | 'on_premise' | 'hybrid' | 'unknown',
-          status: 'active',
-          functionIds: [fn.id],
-          serviceIds: [],
-          ...(sys.techFreedomScore ? { techFreedomScore: sys.techFreedomScore } : {}),
-          ...(sys.cost ? { cost: sys.cost } : {}),
-        });
-      }
-    }
-
+    // Architecture is already up-to-date via incremental writes — just navigate.
     router.push('/wizard/functions/importance');
-  }, [functions, systemsByFunction, addSystem, removeSystem, architecture, router]);
+  }, [router]);
 
   if (!architecture) {
     return (
@@ -386,7 +490,7 @@ export function FunctionSystems() {
       <div role="tablist" aria-label="Organisation functions" className="flex flex-wrap gap-2">
         {functions.map((fn, index) => {
           const isActive = index === activeFunctionIndex;
-          const fnSystems = systemsByFunction[fn.id] ?? [];
+          const fnSystems = byFunction[fn.id] ?? [];
           return (
             <button
               key={fn.id}

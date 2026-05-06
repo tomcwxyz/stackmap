@@ -109,27 +109,44 @@ export function FunctionTagger() {
   const hasSelection = selectedTypes.size > 0;
 
   const handleContinue = useCallback(() => {
-    // Clear existing functions to avoid duplicates on re-visit (idempotent)
+    // Diff selectedTypes against existing functions: keep stable IDs for
+    // already-selected standard types, add only newly selected ones, and
+    // remove only the ones the user has just deselected. Custom functions
+    // are never touched here — they're managed elsewhere.
     const existingFunctions = architecture?.functions ?? [];
+    const existingByType = new Map<string, string>();
     for (const fn of existingFunctions) {
-      removeFunction(fn.id);
+      if (fn.type !== 'custom') {
+        existingByType.set(fn.type, fn.id);
+      }
     }
 
-    // Add selected standard functions and collect their generated IDs
     const functionIdsByType: Record<string, string> = {};
+
+    // Remove deselected standard functions only.
+    for (const fn of existingFunctions) {
+      if (fn.type !== 'custom' && !selectedTypes.has(fn.type)) {
+        removeFunction(fn.id);
+      }
+    }
+
+    // Add or reuse for each selected standard type.
     for (const def of STANDARD_FUNCTIONS) {
-      if (selectedTypes.has(def.type)) {
-        const id = addFunction({
+      if (!selectedTypes.has(def.type)) continue;
+      const existingId = existingByType.get(def.type);
+      if (existingId) {
+        functionIdsByType[def.type] = existingId;
+      } else {
+        functionIdsByType[def.type] = addFunction({
           name: def.name,
           type: def.type,
           description: def.description,
           isActive: true,
         });
-        functionIdsByType[def.type] = id;
       }
     }
 
-    // Update each system's functionIds based on assignments
+    // Update each system's functionIds based on assignments.
     for (const sys of systems) {
       const fnIds: string[] = [];
       for (const [type, id] of Object.entries(functionIdsByType)) {

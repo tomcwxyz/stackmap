@@ -184,12 +184,12 @@ describe('ServiceSystems', () => {
     expect(panel).toHaveAttribute('aria-labelledby', 'tab-svc-1');
   });
 
-  it('navigates to /wizard/services/functions on Continue', async () => {
+  it('navigates to /wizard/services/importance on Continue', async () => {
     const user = userEvent.setup();
     render(<ServiceSystems />);
 
     await user.click(screen.getByRole('button', { name: /continue/i }));
-    expect(pushMock).toHaveBeenCalledWith('/wizard/services/functions');
+    expect(pushMock).toHaveBeenCalledWith('/wizard/services/importance');
   });
 
   describe('TechFreedom integration', () => {
@@ -227,6 +227,79 @@ describe('ServiceSystems', () => {
       await user.click(screen.getByRole('button', { name: /add system/i }));
 
       expect(screen.queryByTestId('risk-indicator')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('state stability across navigation', () => {
+    // Regression: pressing Continue must not rotate system IDs nor wipe
+    // functionIds set in the other wizard step. See PLAN.md "Wizard state
+    // stability".
+    it('does not remove or recreate existing systems on Continue', async () => {
+      const user = userEvent.setup();
+      const removeSystem = vi.fn();
+      const addSystem = vi.fn().mockReturnValue('new-id');
+      mockContext = createMockContext({
+        architecture: {
+          ...createMockContext().architecture!,
+          systems: [
+            {
+              id: 's1',
+              name: 'Salesforce',
+              type: 'crm',
+              hosting: 'cloud',
+              status: 'active',
+              functionIds: ['fn-1'],
+              serviceIds: ['svc-1'],
+              importance: 4,
+            },
+          ],
+        },
+        removeSystem,
+        addSystem,
+      });
+
+      render(<ServiceSystems />);
+      await user.click(screen.getByRole('button', { name: /^continue$/i }));
+
+      expect(removeSystem).not.toHaveBeenCalled();
+      const recreated = addSystem.mock.calls.find(
+        ([payload]) => payload?.name === 'Salesforce',
+      );
+      expect(recreated).toBeUndefined();
+    });
+
+    it('preserves functionIds when continuing', async () => {
+      const user = userEvent.setup();
+      const updateSystem = vi.fn();
+      const removeSystem = vi.fn();
+      mockContext = createMockContext({
+        architecture: {
+          ...createMockContext().architecture!,
+          systems: [
+            {
+              id: 's1',
+              name: 'Notion',
+              type: 'document_management',
+              hosting: 'cloud',
+              status: 'active',
+              functionIds: ['fn-1'],
+              serviceIds: ['svc-1'],
+            },
+          ],
+        },
+        updateSystem,
+        removeSystem,
+      });
+
+      render(<ServiceSystems />);
+      await user.click(screen.getByRole('button', { name: /^continue$/i }));
+
+      expect(removeSystem).not.toHaveBeenCalled();
+      for (const [id, updates] of updateSystem.mock.calls) {
+        if (id === 's1' && Object.prototype.hasOwnProperty.call(updates, 'functionIds')) {
+          expect(updates.functionIds).toEqual(expect.arrayContaining(['fn-1']));
+        }
+      }
     });
   });
 });
