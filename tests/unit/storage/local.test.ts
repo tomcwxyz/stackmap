@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { LocalStorageAdapter, STORAGE_KEY } from '@/lib/storage/local';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { LocalStorageAdapter, STORAGE_KEY, BACKUP_KEY } from '@/lib/storage/local';
 import type { Architecture } from '@/lib/types';
 
 const mockArchitecture: Architecture = {
@@ -34,6 +34,7 @@ const mockArchitecture: Architecture = {
     exportedAt: '2026-01-01T00:00:00.000Z',
     stackmapVersion: '0.1.0',
     mappingPath: 'function_first',
+    techFreedomEnabled: false,
   },
 };
 
@@ -64,10 +65,57 @@ describe('LocalStorageAdapter', () => {
       expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
     });
 
+    it('keeps a backup of data it could not parse', async () => {
+      localStorage.setItem(STORAGE_KEY, '{invalid json!!!');
+      await adapter.load();
+      expect(localStorage.getItem(BACKUP_KEY)).toBe('{invalid json!!!');
+      expect(adapter.getLastLoadReport()).toEqual({ droppedCount: 0, backedUp: true });
+    });
+
+    it('keeps a backup of data whose shape cannot be repaired', async () => {
+      const unusable = JSON.stringify({ notAnArchitecture: true });
+      localStorage.setItem(STORAGE_KEY, unusable);
+
+      const result = await adapter.load();
+
+      expect(result).toBeNull();
+      expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+      expect(localStorage.getItem(BACKUP_KEY)).toBe(unusable);
+      expect(adapter.getLastLoadReport()?.backedUp).toBe(true);
+    });
+
     it('returns null when stored value is "null"', async () => {
       localStorage.setItem(STORAGE_KEY, 'null');
       const result = await adapter.load();
       expect(result).toBeNull();
+    });
+
+    it('migrates a map written before a field existed', async () => {
+      const older = JSON.parse(JSON.stringify(mockArchitecture));
+      delete older.services;
+      delete older.metadata.techFreedomEnabled;
+      delete older.systems[0].serviceIds;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(older));
+
+      const result = await adapter.load();
+
+      expect(result).not.toBeNull();
+      expect(result!.services).toEqual([]);
+      expect(result!.systems[0].serviceIds).toEqual([]);
+      expect(result!.metadata.techFreedomEnabled).toBe(false);
+      // A repairable document is not treated as lost
+      expect(localStorage.getItem(BACKUP_KEY)).toBeNull();
+    });
+
+    it('reports entities it had to drop without losing the map', async () => {
+      const damaged = JSON.parse(JSON.stringify(mockArchitecture));
+      damaged.systems.push({ name: 'System with no id', type: 'crm' });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(damaged));
+
+      const result = await adapter.load();
+
+      expect(result!.systems).toHaveLength(1);
+      expect(adapter.getLastLoadReport()).toEqual({ droppedCount: 1, backedUp: false });
     });
   });
 

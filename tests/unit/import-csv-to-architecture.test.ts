@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { csvRowsToArchitecture } from '@/lib/import/csv-to-architecture';
+import { SCHEMA_VERSION, STACKMAP_VERSION } from '@/lib/version';
 import type { CsvSystemRow } from '@/lib/import';
 
 describe('csvRowsToArchitecture', () => {
@@ -73,7 +74,8 @@ describe('csvRowsToArchitecture', () => {
     const arch = csvRowsToArchitecture(rows, 'My Charity', 'charity');
     expect(arch.organisation.name).toBe('My Charity');
     expect(arch.organisation.type).toBe('charity');
-    expect(arch.metadata.version).toBe('1');
+    expect(arch.metadata.version).toBe(SCHEMA_VERSION);
+    expect(arch.metadata.stackmapVersion).toBe(STACKMAP_VERSION);
     expect(arch.metadata.mappingPath).toBe('function_first');
     expect(arch.services).toEqual([]);
     expect(arch.dataCategories).toEqual([]);

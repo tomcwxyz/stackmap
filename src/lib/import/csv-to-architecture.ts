@@ -3,6 +3,7 @@ import type { Architecture, System, OrgFunction, StandardFunction } from '@/lib/
 import type { CsvSystemRow } from './parse-csv';
 import { findMatchingTool } from '@/lib/techfreedom/match';
 import { KNOWN_TOOLS } from '@/lib/techfreedom/tools';
+import { SCHEMA_VERSION, STACKMAP_VERSION } from '@/lib/version';
 
 const FUNCTION_NAMES: Record<string, string> = {
   finance: 'Finance',
@@ -85,9 +86,9 @@ export function csvRowsToArchitecture(
     integrations: [],
     owners: [],
     metadata: {
-      version: '1',
+      version: SCHEMA_VERSION,
       exportedAt: now,
-      stackmapVersion: '0.3.0',
+      stackmapVersion: STACKMAP_VERSION,
       mappingPath: 'function_first' as const,
     },
   };

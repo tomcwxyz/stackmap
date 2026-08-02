@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { ArchitectureProvider, useArchitecture } from '@/hooks/useArchitecture';
 import { Stepper } from '@/components/wizard/stepper';
 import { LiveMapSidebar } from '@/components/wizard/live-map-sidebar';
+import { StorageNotice } from '@/components/layout/storage-notice';
 import { ImportDialog } from '@/components/import/import-dialog';
 import { mergeCsvIntoArchitecture } from '@/lib/import';
 import type { CsvSystemRow } from '@/lib/import';
@@ -54,6 +55,7 @@ export default function WizardLayout({ children }: { children: ReactNode }) {
     <ArchitectureProvider>
       <div className="min-h-screen bg-surface-50">
         <WizardHeader />
+        <StorageNotice />
         <main className="max-w-3xl mx-auto px-4 py-8 sm:py-12">
           {children}
         </main>

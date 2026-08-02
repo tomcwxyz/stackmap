@@ -702,7 +702,7 @@ export function FunctionSystems() {
                               <option value="subscription">Subscription</option>
                               <option value="perpetual">One-off</option>
                               <option value="free">Free</option>
-                              <option value="unknown">Don't know</option>
+                              <option value="unknown">Don&apos;t know</option>
                             </select>
                           </div>
                         </div>

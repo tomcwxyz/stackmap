@@ -133,9 +133,17 @@ describe('selectTier', () => {
     { name: 'Enterprise', annualPerSeat: 200, minUsers: 50 },
   ];
 
-  it('picks the recommended tier when eligible', () => {
+  it('picks the recommended tier for very small teams', () => {
+    const result = selectTier(tiers, 3);
+    // Only Free is eligible at 3 users, and it is the recommended tier
+    expect(result?.name).toBe('Free');
+  });
+
+  it('prefers the cheapest paid tier over a free tier once past 3 users', () => {
     const result = selectTier(tiers, 5);
-    expect(result?.name).toBe('Free'); // both Free and Pro are eligible, but Free is recommended
+    // Free and Pro are both eligible, but an org with real staff will be
+    // on paid licences rather than 5 free accounts
+    expect(result?.name).toBe('Pro');
   });
 
   it('picks cheapest eligible when no recommended tier fits', () => {

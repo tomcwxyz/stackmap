@@ -5,6 +5,8 @@ import {
   useContext,
   useCallback,
   useEffect,
+  useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -20,9 +22,28 @@ import type {
   Owner,
   MappingPath,
 } from '@/lib/types';
-import type { StorageAdapter } from '@/lib/storage/adapter';
+import type { LoadReport, StorageAdapter } from '@/lib/storage/adapter';
 import { LocalStorageAdapter } from '@/lib/storage/local';
+import {
+  StorageStatusProvider,
+  type SaveState,
+  type StorageStatus,
+} from '@/hooks/useStorageStatus';
+import { SCHEMA_VERSION, STACKMAP_VERSION } from '@/lib/version';
 import { v4 as uuidv4 } from 'uuid';
+
+/** How long to wait after the last change before writing to storage. */
+const SAVE_DEBOUNCE_MS = 500;
+
+function describeSaveError(error: unknown): string {
+  const name = error instanceof Error ? error.name : '';
+  const message = error instanceof Error ? error.message : String(error);
+
+  if (name === 'QuotaExceededError' || /quota/i.test(message)) {
+    return 'There is no room left in this browser’s storage, so your map could not be saved.';
+  }
+  return 'Your map could not be saved in this browser.';
+}
 
 // ─── Context value shape ───
 
@@ -93,9 +114,9 @@ function createBlankArchitecture(mappingPath: MappingPath = 'function_first'): A
     integrations: [],
     owners: [],
     metadata: {
-      version: '1.0.0',
+      version: SCHEMA_VERSION,
       exportedAt: now,
-      stackmapVersion: '0.1.0',
+      stackmapVersion: STACKMAP_VERSION,
       mappingPath,
       techFreedomEnabled: false,
     },
@@ -117,18 +138,28 @@ export function ArchitectureProvider({
   adapter,
   mappingPath = 'function_first',
 }: ArchitectureProviderProps) {
-  const storageAdapter = adapter ?? new LocalStorageAdapter();
+  // The adapter owns a storage handle, so it must survive re-renders.
+  const [storageAdapter] = useState<StorageAdapter>(
+    () => adapter ?? new LocalStorageAdapter(),
+  );
   const [architecture, setArchitecture] = useState<Architecture | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [saveState, setSaveState] = useState<SaveState>('idle');
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [loadReport, setLoadReport] = useState<LoadReport | null>(null);
 
   // Load from storage on mount
   useEffect(() => {
     let cancelled = false;
     storageAdapter.load().then((loaded) => {
-      if (!cancelled) {
-        setArchitecture(loaded ?? createBlankArchitecture(mappingPath));
-        setIsLoading(false);
+      if (cancelled) return;
+      setArchitecture(loaded ?? createBlankArchitecture(mappingPath));
+      const report = storageAdapter.getLastLoadReport?.() ?? null;
+      // Only worth reporting when something was actually lost
+      if (report && (report.backedUp || report.droppedCount > 0)) {
+        setLoadReport(report);
       }
+      setIsLoading(false);
     });
     return () => {
       cancelled = true;
@@ -136,13 +167,52 @@ export function ArchitectureProvider({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-save to storage whenever architecture changes
+  // Auto-save to storage whenever architecture changes.
+  //
+  // Debounced because edits arrive keystroke-by-keystroke and each write
+  // serialises the whole document. Failures are surfaced rather than swallowed:
+  // a full quota means the user is one tab-close away from losing their work
+  // and needs to be told to export.
+  const persist = useCallback(
+    async (arch: Architecture) => {
+      try {
+        await storageAdapter.save(arch);
+        setSaveState('saved');
+        setSaveError(null);
+      } catch (error) {
+        setSaveState('error');
+        setSaveError(describeSaveError(error));
+      }
+    },
+    [storageAdapter],
+  );
+
+  const pendingSaveRef = useRef<Architecture | null>(null);
+
   useEffect(() => {
-    if (!isLoading && architecture) {
-      storageAdapter.save(architecture);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [architecture, isLoading]);
+    if (isLoading || !architecture) return;
+
+    pendingSaveRef.current = architecture;
+    const timer = setTimeout(() => {
+      pendingSaveRef.current = null;
+      void persist(architecture);
+    }, SAVE_DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
+  }, [architecture, isLoading, persist]);
+
+  // Never leave a debounced change unwritten when the provider goes away.
+  useEffect(() => {
+    return () => {
+      const pending = pendingSaveRef.current;
+      if (pending) {
+        pendingSaveRef.current = null;
+        void storageAdapter.save(pending).catch(() => {
+          // Nothing can be shown at this point — the tree is unmounting.
+        });
+      }
+    };
+  }, [storageAdapter]);
 
   // Generic updater that bumps organisation.updatedAt
   const updateArch = useCallback(
@@ -370,16 +440,20 @@ export function ArchitectureProvider({
 
   const save = useCallback(async () => {
     if (architecture) {
-      await storageAdapter.save(architecture);
+      pendingSaveRef.current = null;
+      await persist(architecture);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [architecture]);
+  }, [architecture, persist]);
 
   const clear = useCallback(async () => {
+    pendingSaveRef.current = null;
     await storageAdapter.clear();
     setArchitecture(createBlankArchitecture(mappingPath));
+    setLoadReport(null);
+    setSaveState('idle');
+    setSaveError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [storageAdapter]);
 
   const getArchitecture = useCallback(() => architecture, [architecture]);
 
@@ -409,7 +483,16 @@ export function ArchitectureProvider({
     getArchitecture,
   };
 
-  return createElement(ArchitectureContext.Provider, { value }, children);
+  const storageStatus: StorageStatus = useMemo(
+    () => ({ saveState, saveError, loadReport }),
+    [saveState, saveError, loadReport],
+  );
+
+  return createElement(
+    ArchitectureContext.Provider,
+    { value },
+    createElement(StorageStatusProvider, { value: storageStatus }, children),
+  );
 }
 
 // ─── Hook ───

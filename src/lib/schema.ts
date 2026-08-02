@@ -192,3 +192,15 @@ export const ArchitectureSchema = z.object({
   owners: z.array(OwnerSchema),
   metadata: ArchitectureMetadataSchema,
 });
+
+/**
+ * Schema for architectures read back out of storage.
+ *
+ * Identical to ArchitectureSchema except that the organisation name may be
+ * empty: a map is created before the user has typed one, and a half-finished
+ * map must survive a page reload. Imported files still go through the strict
+ * schema, where a name is required.
+ */
+export const StoredArchitectureSchema = ArchitectureSchema.extend({
+  organisation: OrganisationSchema.extend({ name: z.string() }),
+});
