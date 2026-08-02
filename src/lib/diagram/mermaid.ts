@@ -4,14 +4,33 @@ import type { Architecture, System } from '@/lib/types';
 
 /**
  * Sanitise a string for use as a Mermaid node label.
+ *
  * Mermaid is sensitive to parentheses, quotes, semicolons, curly braces, etc.
+ * Angle brackets are stripped as well: labels come from user data, including
+ * imported files that may have been written by someone else, and the rendered
+ * SVG is injected into the page.
  */
 export function sanitiseLabel(label: string): string {
   return label
-    .replace(/[(){}[\]"';#&]/g, '')
+    .replace(/[(){}[\]"';#&<>]/g, '')
     .replace(/'/g, '')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/** Mermaid cannot render an empty label, so fall back to a readable placeholder. */
+function labelOr(label: string, fallback: string): string {
+  return label.length > 0 ? label : fallback;
+}
+
+/**
+ * Open a subgraph with a synthetic id and a quoted title.
+ *
+ * Using the display name as the identifier meant two functions with the same
+ * name collided, and a function called `end` or `graph` broke the diagram.
+ */
+function openSubgraph(id: string, title: string): string {
+  return `  subgraph ${id}["${labelOr(title, 'Untitled')}"]`;
 }
 
 // ─── Integration type labels ───
@@ -40,7 +59,7 @@ function annualiseCost(system: System): number | null {
 }
 
 function systemLabel(system: System, _owners?: Architecture['owners']): string {
-  let label = sanitiseLabel(system.name);
+  let label = labelOr(sanitiseLabel(system.name), 'Unnamed system');
   const annual = annualiseCost(system);
   if (annual !== null && annual > 0) {
     label = `${label} - £${annual.toLocaleString('en-GB')}/yr`;
@@ -68,9 +87,8 @@ export function generateMermaidDiagram(arch: Architecture): string {
   // Build function subgraphs
   const systemsPlaced = new Set<string>();
 
-  for (const fn of arch.functions) {
-    const fnLabel = sanitiseLabel(fn.name);
-    lines.push(`  subgraph ${fnLabel}`);
+  for (const [index, fn] of arch.functions.entries()) {
+    lines.push(openSubgraph(`fn_${index}`, sanitiseLabel(fn.name)));
 
     const fnSystems = systems.filter((s) => s.functionIds.includes(fn.id));
     for (const sys of fnSystems) {
@@ -93,9 +111,9 @@ export function generateMermaidDiagram(arch: Architecture): string {
 
   // Services subgraph
   if (arch.services.length > 0) {
-    lines.push('  subgraph Services');
+    lines.push(openSubgraph('services', 'Services'));
     for (const svc of arch.services) {
-      lines.push(`    ${svc.id}[${sanitiseLabel(svc.name)}]`);
+      lines.push(`    ${svc.id}[${labelOr(sanitiseLabel(svc.name), 'Unnamed service')}]`);
     }
     lines.push('  end');
 
@@ -167,7 +185,7 @@ export function generateSystemDiagram(arch: Architecture): string {
 
   // All systems as flat nodes
   for (const sys of systems) {
-    const sysLabel = sanitiseLabel(sys.name);
+    const sysLabel = labelOr(sanitiseLabel(sys.name), 'Unnamed system');
     lines.push(`  ${sys.id}[${sysLabel}]`);
   }
 
@@ -203,13 +221,12 @@ export function generateFunctionDiagram(arch: Architecture): string {
 
   const systemsPlaced = new Set<string>();
 
-  for (const fn of arch.functions) {
-    const fnLabel = sanitiseLabel(fn.name);
-    lines.push(`  subgraph ${fnLabel}`);
+  for (const [index, fn] of arch.functions.entries()) {
+    lines.push(openSubgraph(`fn_${index}`, sanitiseLabel(fn.name)));
 
     const fnSystems = systems.filter((s) => s.functionIds.includes(fn.id));
     for (const sys of fnSystems) {
-      const sysLabel = sanitiseLabel(sys.name);
+      const sysLabel = labelOr(sanitiseLabel(sys.name), 'Unnamed system');
       lines.push(`    ${sys.id}[${sysLabel}]`);
       systemsPlaced.add(sys.id);
     }
@@ -220,7 +237,7 @@ export function generateFunctionDiagram(arch: Architecture): string {
   // Orphan systems
   const orphans = systems.filter((s) => !systemsPlaced.has(s.id));
   for (const sys of orphans) {
-    const sysLabel = sanitiseLabel(sys.name);
+    const sysLabel = labelOr(sanitiseLabel(sys.name), 'Unnamed system');
     lines.push(`  ${sys.id}[${sysLabel}]`);
   }
 
@@ -246,7 +263,7 @@ export function generateDataFlowDiagram(arch: Architecture): string {
 
   // Systems as nodes
   for (const sys of systems) {
-    lines.push(`  ${sys.id}[${sanitiseLabel(sys.name)}]`);
+    lines.push(`  ${sys.id}[${labelOr(sanitiseLabel(sys.name), 'Unnamed system')}]`);
   }
 
   // Style classes for sensitivity
@@ -307,9 +324,8 @@ export function generateServiceDiagram(arch: Architecture): string {
 
   const systemsPlaced = new Set<string>();
 
-  for (const svc of arch.services) {
-    const svcLabel = sanitiseLabel(svc.name);
-    lines.push(`  subgraph ${svcLabel}`);
+  for (const [index, svc] of arch.services.entries()) {
+    lines.push(openSubgraph(`svc_${index}`, sanitiseLabel(svc.name)));
 
     const svcSystems = systems.filter((s) => svc.systemIds.includes(s.id));
     for (const sys of svcSystems) {
@@ -324,7 +340,7 @@ export function generateServiceDiagram(arch: Architecture): string {
   // Systems not linked to any service
   const orphans = systems.filter((s) => !systemsPlaced.has(s.id));
   if (orphans.length > 0) {
-    lines.push('  subgraph Other');
+    lines.push(openSubgraph('other_systems', 'Other'));
     for (const sys of orphans) {
       const sysLabel = systemLabel(sys, arch.owners);
       lines.push(`    ${sys.id}[${sysLabel}]`);

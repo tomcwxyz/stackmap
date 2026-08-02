@@ -29,12 +29,12 @@ Stackmap was built because I often find organisations struggle to do this in an 
 
 - **Two wizard paths** — start with organisational functions ("what we do") or services ("what we deliver")
 - **Smart suggestions** — system recommendations tailored to your organisation type and size
-- **10 service templates** with auto-populated tools
+- **14 service templates** with auto-populated tools
 - **Import from CSV or JSON** — bring in existing data from spreadsheets or previous exports, with merge support
 - **TechFreedom risk assessment** — integrated wizard step scoring systems across jurisdiction, continuity, surveillance, lock-in, and cost exposure
 - **Cost estimation** with per-seat pricing and tier selection
 - **Architecture and data flow diagrams** — visual maps with status indicators, personal data flags, and sensitivity colouring
-- **JSON export** of your complete architecture
+- **JSON, Markdown, CSV and PNG export** of your complete architecture
 - **Fully accessible** — WCAG 2.1 AA, keyboard navigable, screen reader compatible
 
 ## Quick Start

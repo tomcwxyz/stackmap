@@ -22,6 +22,7 @@ vi.mock('next/link', () => ({
 }));
 
 const addIntegrationMock = vi.fn().mockReturnValue('mock-intg-id');
+const removeIntegrationMock = vi.fn();
 
 const makeMock = (systemCount: number): ArchitectureContextValue => ({
   architecture: {
@@ -56,7 +57,7 @@ const makeMock = (systemCount: number): ArchitectureContextValue => ({
   addDataCategory: vi.fn().mockReturnValue(''),
   removeDataCategory: vi.fn(),
   addIntegration: addIntegrationMock,
-  removeIntegration: vi.fn(),
+  removeIntegration: removeIntegrationMock,
   addOwner: vi.fn().mockReturnValue(''),
   removeOwner: vi.fn(),
   save: vi.fn().mockResolvedValue(undefined),
@@ -141,21 +142,49 @@ describe('IntegrationMatrix', () => {
     expect(screen.getByLabelText(/how often/i)).toBeInTheDocument();
   });
 
-  it('calls addIntegration on continue', async () => {
+  it('saves a connection as soon as it is added, not on continue', async () => {
     const user = userEvent.setup();
     render(<IntegrationMatrix />);
 
     await user.selectOptions(screen.getByLabelText(/from system/i), 'sys-1');
     await user.selectOptions(screen.getByLabelText(/to system/i), 'sys-2');
     await user.click(screen.getByRole('button', { name: /add connection/i }));
-    await user.click(screen.getByRole('button', { name: /^continue$/i }));
 
+    // The user may now leave via the stepper rather than Continue, so the
+    // connection has to be in the architecture already
     expect(addIntegrationMock).toHaveBeenCalledWith(
       expect.objectContaining({
         sourceSystemId: 'sys-1',
         targetSystemId: 'sys-2',
       }),
     );
+  });
+
+  it('removes a connection from the architecture straight away', async () => {
+    const user = userEvent.setup();
+    render(<IntegrationMatrix />);
+
+    await user.selectOptions(screen.getByLabelText(/from system/i), 'sys-1');
+    await user.selectOptions(screen.getByLabelText(/to system/i), 'sys-2');
+    await user.click(screen.getByRole('button', { name: /add connection/i }));
+    await user.click(screen.getByRole('button', { name: /remove connection/i }));
+
+    expect(removeIntegrationMock).toHaveBeenCalledWith('mock-intg-id');
+  });
+
+  it('only navigates on continue, without rewriting what was added', async () => {
+    const user = userEvent.setup();
+    render(<IntegrationMatrix />);
+
+    await user.selectOptions(screen.getByLabelText(/from system/i), 'sys-1');
+    await user.selectOptions(screen.getByLabelText(/to system/i), 'sys-2');
+    await user.click(screen.getByRole('button', { name: /add connection/i }));
+    addIntegrationMock.mockClear();
+
+    await user.click(screen.getByRole('button', { name: /^continue$/i }));
+
+    expect(addIntegrationMock).not.toHaveBeenCalled();
+    expect(removeIntegrationMock).not.toHaveBeenCalled();
     expect(pushMock).toHaveBeenCalledWith('/wizard/functions/owners');
   });
 

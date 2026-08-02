@@ -18,13 +18,18 @@ export function MermaidRenderer({ syntax, id = 'mermaid-diagram' }: MermaidRende
     async function renderDiagram() {
       try {
         const mermaid = (await import('mermaid')).default;
+        // Labels come from user data, including imported files, and the
+        // rendered SVG is injected into the page. Strict mode plus SVG text
+        // labels keeps that data from being treated as markup — and SVG text
+        // also rasterises properly in the PNG export below, which foreignObject
+        // labels did not.
         mermaid.initialize({
           startOnLoad: false,
           theme: 'default',
-          securityLevel: 'loose',
+          securityLevel: 'strict',
           flowchart: {
             useMaxWidth: true,
-            htmlLabels: true,
+            htmlLabels: false,
             curve: 'basis',
           },
         });

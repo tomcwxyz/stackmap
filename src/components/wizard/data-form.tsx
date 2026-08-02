@@ -33,6 +33,11 @@ interface DataDraft {
   systemIds: string[];
 }
 
+/** An added category, carrying the id it was given in the architecture. */
+interface DataEntry extends DataDraft {
+  id: string;
+}
+
 const EMPTY_DRAFT: DataDraft = {
   name: '',
   sensitivity: 'internal',
@@ -47,9 +52,13 @@ export function DataForm() {
   const { architecture, addDataCategory, removeDataCategory } = useArchitecture();
 
   const [draft, setDraft] = useState<DataDraft>(EMPTY_DRAFT);
-  // Hydrate from architecture on re-visit
-  const [added, setAdded] = useState<DataDraft[]>(() => {
+  // Local mirror of the architecture's categories, keyed by the id each was
+  // given when it was added. Categories are written straight through, so
+  // leaving this step by any route — Continue, the stepper, the browser back
+  // button — keeps what has been entered.
+  const [added, setAdded] = useState<DataEntry[]>(() => {
     return (architecture?.dataCategories ?? []).map((dc) => ({
+      id: dc.id,
       name: dc.name,
       sensitivity: dc.sensitivity,
       containsPersonalData: dc.containsPersonalData,
@@ -92,31 +101,23 @@ export function DataForm() {
 
   const handleAdd = useCallback(() => {
     if (!draft.name.trim()) return;
-    setAdded((prev) => [...prev, { ...draft, name: draft.name.trim() }]);
+    const category = { ...draft, name: draft.name.trim() };
+    const id = addDataCategory(category);
+    setAdded((prev) => [...prev, { ...category, id }]);
     setDraft(EMPTY_DRAFT);
-  }, [draft]);
+  }, [draft, addDataCategory]);
 
-  const handleRemove = useCallback((index: number) => {
-    setAdded((prev) => prev.filter((_, i) => i !== index));
-  }, []);
+  const handleRemove = useCallback(
+    (id: string) => {
+      removeDataCategory(id);
+      setAdded((prev) => prev.filter((dc) => dc.id !== id));
+    },
+    [removeDataCategory],
+  );
 
   const handleContinue = useCallback(() => {
-    // Clear existing data categories to avoid duplicates on re-visit
-    const existingCategories = architecture?.dataCategories ?? [];
-    for (const dc of existingCategories) {
-      removeDataCategory(dc.id);
-    }
-
-    for (const dc of added) {
-      addDataCategory({
-        name: dc.name,
-        sensitivity: dc.sensitivity,
-        containsPersonalData: dc.containsPersonalData,
-        systemIds: dc.systemIds,
-      });
-    }
     router.push(`${basePath}/integrations`);
-  }, [added, addDataCategory, removeDataCategory, architecture, router, basePath]);
+  }, [router, basePath]);
 
   if (!architecture) {
     return (
@@ -149,9 +150,9 @@ export function DataForm() {
             Data categories added
           </h2>
           <ul className="space-y-2" role="list">
-            {added.map((dc, index) => (
+            {added.map((dc) => (
               <li
-                key={index}
+                key={dc.id}
                 className="flex items-center justify-between bg-white border border-surface-200 rounded-lg p-3"
               >
                 <div className="break-words min-w-0">
@@ -167,7 +168,7 @@ export function DataForm() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => handleRemove(index)}
+                  onClick={() => handleRemove(dc.id)}
                   aria-label={`Remove ${dc.name}`}
                   className="text-primary-400 hover:text-red-600 transition-colors p-1"
                 >

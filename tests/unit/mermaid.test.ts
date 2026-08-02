@@ -139,6 +139,59 @@ describe('sanitiseLabel', () => {
   it('collapses multiple spaces', () => {
     expect(sanitiseLabel('Hello   World')).toBe('Hello World');
   });
+
+  it('removes angle brackets so markup cannot reach the rendered SVG', () => {
+    expect(sanitiseLabel('<img src=x onerror=alert(1)>')).toBe('img src=x onerror=alert1');
+    expect(sanitiseLabel('<script>alert(1)</script>')).toBe('scriptalert1/script');
+  });
+});
+
+// ─── Subgraph identifiers ───
+
+describe('subgraph identifiers', () => {
+  it('gives each function its own id even when names repeat', () => {
+    const arch = createBlankArchitecture();
+    arch.functions = [
+      { id: 'fn-1', name: 'Advice', type: 'custom', isActive: true },
+      { id: 'fn-2', name: 'Advice', type: 'custom', isActive: true },
+    ];
+
+    const result = generateMermaidDiagram(arch);
+
+    expect(result).toContain('subgraph fn_0["Advice"]');
+    expect(result).toContain('subgraph fn_1["Advice"]');
+  });
+
+  it('does not use a reserved word as a subgraph id', () => {
+    const arch = createBlankArchitecture();
+    arch.functions = [{ id: 'fn-1', name: 'end', type: 'custom', isActive: true }];
+
+    const result = generateMermaidDiagram(arch);
+
+    expect(result).toContain('subgraph fn_0["end"]');
+    expect(result).not.toContain('subgraph end');
+  });
+
+  it('falls back to a placeholder when a name sanitises away entirely', () => {
+    const arch = createBlankArchitecture();
+    arch.functions = [{ id: 'fn-1', name: '{}', type: 'custom', isActive: true }];
+    arch.systems = [
+      {
+        id: 'sys-1',
+        name: '<>',
+        type: 'other',
+        hosting: 'cloud',
+        status: 'active',
+        functionIds: ['fn-1'],
+        serviceIds: [],
+      },
+    ];
+
+    const result = generateMermaidDiagram(arch);
+
+    expect(result).toContain('subgraph fn_0["Untitled"]');
+    expect(result).toContain('sys-1[Unnamed system]');
+  });
 });
 
 // ─── generateMermaidDiagram ───
@@ -157,8 +210,8 @@ describe('generateMermaidDiagram', () => {
     const result = generateMermaidDiagram(arch);
 
     // Finance subgraph should contain Xero and Excel
-    expect(result).toContain('subgraph Finance');
-    expect(result).toContain('subgraph Operations');
+    expect(result).toContain('["Finance"]');
+    expect(result).toContain('["Operations"]');
 
     // Check systems appear as nodes
     expect(result).toMatch(/sys-1\[.*Xero.*\]/);
@@ -316,8 +369,8 @@ describe('generateFunctionDiagram', () => {
     const arch = createPopulatedArchitecture();
     const result = generateFunctionDiagram(arch);
 
-    expect(result).toContain('subgraph Finance');
-    expect(result).toContain('subgraph Operations');
+    expect(result).toContain('["Finance"]');
+    expect(result).toContain('["Operations"]');
     expect(result).toMatch(/sys-1\[.*Xero.*\]/);
   });
 
@@ -345,7 +398,7 @@ describe('generateMermaidDiagram — services', () => {
       },
     ];
     const result = generateMermaidDiagram(arch);
-    expect(result).toContain('subgraph Services');
+    expect(result).toContain('["Services"]');
     expect(result).toContain('svc-1[Advice sessions]');
     // Dashed arrows from service to systems
     expect(result).toContain('svc-1 -.-> sys-1');
@@ -393,7 +446,7 @@ describe('generateServiceDiagram', () => {
       },
     ];
     const result = generateServiceDiagram(arch);
-    expect(result).toContain('subgraph Advice sessions');
+    expect(result).toContain('["Advice sessions"]');
     expect(result).toMatch(/sys-1\[.*Xero.*\]/);
     expect(result).toMatch(/sys-2\[.*Excel Spreadsheet.*\]/);
   });
@@ -410,7 +463,7 @@ describe('generateServiceDiagram', () => {
       },
     ];
     const result = generateServiceDiagram(arch);
-    expect(result).toContain('subgraph Other');
+    expect(result).toContain('["Other"]');
     // sys-2 and sys-3 not linked to any service
     expect(result).toMatch(/sys-2\[.*Excel Spreadsheet.*\]/);
     expect(result).toMatch(/sys-3\[.*Microsoft 365.*\]/);

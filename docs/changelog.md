@@ -5,6 +5,28 @@ All notable changes to Stackmap will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **Your map survives a bad save** — if the browser refuses to store your map (usually because storage is full), Stackmap now tells you and prompts you to export, instead of failing silently.
+- **Maps written by older versions load properly** — stored maps are checked and brought up to date on load, filling in fields that did not exist when the map was saved.
+- **Damaged maps are no longer lost** — a map that cannot be read is kept as a backup in your browser rather than deleted, and individual entries that cannot be repaired are dropped with a count shown rather than taking the whole map with them.
+- **The Data and Integrations steps no longer discard your work** — entries are saved as you add them, so leaving the step through the stepper (rather than the Continue button) keeps them.
+- **Diagram labels cannot inject markup** — system and function names taken from imported files are stripped of angle brackets, and diagrams now render with strict security settings.
+- **Functions with the same name get their own diagram groups** instead of being merged together.
+- **Version numbers agree** — exported and stored maps now carry a single, correct version rather than three different ones.
+
+### Changed
+
+- Saving to the browser is debounced, so typing no longer rewrites the whole map on every keystroke.
+
+### Internal
+
+- ESLint configuration added, so `npm run lint` runs; a CI workflow now runs lint, typecheck and tests on every push and pull request.
+- Removed the unused `sql.js` dependency.
+- Diagram output is now checked against the real Mermaid parser in tests.
+
 ## [0.3.0] - 2026-04-01
 
 ### Added

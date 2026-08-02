@@ -22,6 +22,7 @@ vi.mock('next/link', () => ({
 }));
 
 const addDataCategoryMock = vi.fn().mockReturnValue('mock-dc-id');
+const removeDataCategoryMock = vi.fn();
 
 const mockContextValue: ArchitectureContextValue = {
   architecture: {
@@ -49,7 +50,7 @@ const mockContextValue: ArchitectureContextValue = {
   updateSystem: vi.fn(),
   removeSystem: vi.fn(),
   addDataCategory: addDataCategoryMock,
-  removeDataCategory: vi.fn(),
+  removeDataCategory: removeDataCategoryMock,
   addIntegration: vi.fn().mockReturnValue(''),
   removeIntegration: vi.fn(),
   addOwner: vi.fn().mockReturnValue(''),
@@ -150,16 +151,40 @@ describe('DataForm', () => {
     expect(screen.getByRole('button', { name: 'Staff Records' })).toBeInTheDocument();
   });
 
-  it('calls addDataCategory on continue', async () => {
+  it('saves a category as soon as it is added, not on continue', async () => {
     const user = userEvent.setup();
     render(<DataForm />);
     await user.click(screen.getByRole('button', { name: 'Financial Transactions' }));
     await user.click(screen.getByRole('button', { name: /add data category/i }));
-    await user.click(screen.getByRole('button', { name: /^continue$/i }));
 
+    // The user may now leave via the stepper rather than Continue, so the
+    // category has to be in the architecture already
     expect(addDataCategoryMock).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'Financial Transactions', sensitivity: 'internal' }),
     );
+  });
+
+  it('removes a category from the architecture straight away', async () => {
+    const user = userEvent.setup();
+    render(<DataForm />);
+    await user.click(screen.getByRole('button', { name: 'Staff Records' }));
+    await user.click(screen.getByRole('button', { name: /add data category/i }));
+    await user.click(screen.getByRole('button', { name: /remove staff records/i }));
+
+    expect(removeDataCategoryMock).toHaveBeenCalledWith('mock-dc-id');
+  });
+
+  it('only navigates on continue, without rewriting what was added', async () => {
+    const user = userEvent.setup();
+    render(<DataForm />);
+    await user.click(screen.getByRole('button', { name: 'Financial Transactions' }));
+    await user.click(screen.getByRole('button', { name: /add data category/i }));
+    addDataCategoryMock.mockClear();
+
+    await user.click(screen.getByRole('button', { name: /^continue$/i }));
+
+    expect(addDataCategoryMock).not.toHaveBeenCalled();
+    expect(removeDataCategoryMock).not.toHaveBeenCalled();
     expect(pushMock).toHaveBeenCalledWith('/wizard/functions/integrations');
   });
 
