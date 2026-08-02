@@ -365,6 +365,65 @@ describe('SystemsTable', () => {
       expect(screen.queryByRole('columnheader', { name: /risk/i })).not.toBeInTheDocument();
     });
 
+    it('lets an unscored system be assessed by hand', async () => {
+      const user = userEvent.setup();
+      const arch = makeArchitecture();
+      arch.metadata.techFreedomEnabled = true;
+      currentArchitecture = arch;
+
+      render(<SystemsTable />);
+      await user.click(screen.getByRole('button', { name: /edit old access database/i }));
+
+      // Nothing in the known tools database matches, so scoring is offered
+      expect(screen.getByText(/not in the known tools database/i)).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: /score this system/i }));
+      await user.selectOptions(screen.getByLabelText(/lock-in risk score/i), '5');
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+      expect(updateSystemMock).toHaveBeenCalledWith(
+        'sys-2',
+        expect.objectContaining({
+          techFreedomScore: expect.objectContaining({ lockIn: 5, isAutoScored: false }),
+        }),
+      );
+    });
+
+    it('marks an adjusted auto-score as no longer automatic', async () => {
+      const user = userEvent.setup();
+      const arch = makeArchitecture();
+      arch.metadata.techFreedomEnabled = true;
+      arch.systems[0].techFreedomScore = {
+        jurisdiction: 3,
+        continuity: 2,
+        surveillance: 3,
+        lockIn: 4,
+        costExposure: 3,
+        isAutoScored: true,
+      };
+      currentArchitecture = arch;
+
+      render(<SystemsTable />);
+      await user.click(screen.getByRole('button', { name: /edit xero/i }));
+      await user.selectOptions(screen.getByLabelText(/jurisdiction risk score/i), '1');
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+      expect(updateSystemMock).toHaveBeenCalledWith(
+        'sys-1',
+        expect.objectContaining({
+          techFreedomScore: expect.objectContaining({ jurisdiction: 1, isAutoScored: false }),
+        }),
+      );
+    });
+
+    it('offers no scoring when risk assessment is off', async () => {
+      const user = userEvent.setup();
+      render(<SystemsTable />);
+
+      await user.click(screen.getByRole('button', { name: /edit old access database/i }));
+
+      expect(screen.queryByRole('button', { name: /score this system/i })).not.toBeInTheDocument();
+    });
+
     it('shows scores when risk assessment is on', () => {
       const arch = makeArchitecture();
       arch.metadata.techFreedomEnabled = true;

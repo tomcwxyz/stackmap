@@ -34,7 +34,9 @@ Stackmap was built because I often find organisations struggle to do this in an 
 - **TechFreedom risk assessment** — integrated wizard step scoring systems across jurisdiction, continuity, surveillance, lock-in, and cost exposure
 - **Cost estimation** with per-seat pricing and tier selection
 - **Architecture and data flow diagrams** — visual maps with status indicators, personal data flags, and sensitivity colouring
-- **JSON, Markdown, CSV and PNG export** of your complete architecture
+- **Systems inventory** — edit or delete any system after the wizard, in one searchable table
+- **Board report** — a printable summary for trustees and funders
+- **JSON, Markdown, CSV, SVG and PNG export** of your complete architecture
 - **Fully accessible** — WCAG 2.1 AA, keyboard navigable, screen reader compatible
 
 ## Quick Start

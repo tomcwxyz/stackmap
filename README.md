@@ -25,10 +25,12 @@ Stackmap is an open source tool that solves this problem. It provides a guided w
 - **TechFreedom risk assessment** (optional) — scores systems across 5 dimensions: jurisdiction, continuity, surveillance, lock-in, and cost exposure
 - **134 pre-scored known tools** with detailed pricing data for automatic cost estimation
 - **Smart cost estimation** with per-seat pricing, tier selection, and penetration rates
+- **Systems inventory** — search, filter, sort, edit and delete every system in one place after the wizard
+- **Board report** — a printable one-page summary for trustees and funders
 - **Live architecture map sidebar** showing your map as you build it
 - **Mermaid diagram generation** for visual architecture maps
 - **Cost analysis** with overlap detection
-- **JSON, Markdown, CSV and PNG export** of your architecture
+- **JSON, Markdown, CSV, SVG and PNG export** of your architecture
 - **WCAG 2.1 AA accessible** — keyboard navigable, screen reader compatible, axe-core tested
 - **Mobile responsive** design with mobile-first approach
 - **Offline-first** — all data stored in localStorage, no server required; stored maps are validated and migrated on load, and unreadable data is backed up rather than discarded
@@ -68,13 +70,13 @@ Then open [http://localhost:3000](http://localhost:3000) in your browser.
 src/
 ├── app/                    # Next.js App Router pages and layouts
 │   ├── wizard/             # Wizard flow (function-first and service-first paths)
-│   └── view/               # Diagram and TechFreedom risk views
+│   └── view/               # Systems inventory, diagram, board report, risk views
 ├── components/
 │   ├── ui/                 # Base UI components (Button, Card, Input, Select, etc.)
 │   ├── wizard/             # Wizard-specific components (steps, forms, sidebar)
 │   ├── techfreedom/        # Risk badge, radar chart, risk details
 │   ├── import/             # Import dialog and CSV preview
-│   ├── views/              # Diagram and risk view shells
+│   ├── views/              # Systems table, diagram, board report, risk views
 │   └── layout/             # Header, footer, storage notice
 ├── lib/
 │   ├── types.ts            # Core TypeScript type definitions
@@ -87,6 +89,7 @@ src/
 │   ├── storage/            # Storage adapter, migration, localStorage backend
 │   ├── import/             # CSV and JSON import
 │   ├── export/             # Markdown and CSV export
+│   ├── report/             # Board report analysis
 │   ├── diagram/            # Mermaid diagram generation
 │   └── techfreedom/        # Risk scoring, known tools database, API
 ├── hooks/                  # React hooks (useArchitecture, useStorageStatus, useAppConfig)

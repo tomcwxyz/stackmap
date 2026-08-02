@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Your systems** — a new view listing every system with search, filters and sortable columns, where you can edit or delete anything without walking back through the wizard. This is also the only place several details can be set at all: status (active, planned, retiring, legacy), web address, notes, owner and importance.
+- **Score your own tools** — systems that are not in the known tools database can now be given TechFreedom risk scores by hand, instead of being left unassessed.
+- **Board report** — a printable one-page summary at `/view/report`: headline numbers, what needs attention, the systems you could not operate without, where the money goes, possible duplication and a risk summary. Print it or save it as a PDF for a trustee meeting.
+- **How well does it work?** — the integrations step now asks whether each connection is reliable or fragile, and fragile ones are flagged in the review and the board report.
+- **SVG export** of diagrams alongside PNG, which stays sharp at any size.
+
 ### Fixed
 
 - **Your map survives a bad save** — if the browser refuses to store your map (usually because storage is full), Stackmap now tells you and prompts you to export, instead of failing silently.
@@ -16,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Diagram labels cannot inject markup** — system and function names taken from imported files are stripped of angle brackets, and diagrams now render with strict security settings.
 - **Functions with the same name get their own diagram groups** instead of being merged together.
 - **Version numbers agree** — exported and stored maps now carry a single, correct version rather than three different ones.
+- **Importing the same spreadsheet twice no longer doubles your map** — rows are matched to systems you already have by name and update them instead, filling in blanks without overwriting anything you typed. The preview says how many rows are new and how many will be updated.
 
 ### Changed
 

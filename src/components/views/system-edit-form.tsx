@@ -4,7 +4,18 @@ import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import type { Owner, System, SystemType } from '@/lib/types';
+import { RiskDetails } from '@/components/techfreedom/risk-details';
+import type { Owner, System, SystemType, TechFreedomScore } from '@/lib/types';
+
+/** Middle of the 1-5 range, so a hand-scored system starts from neutral. */
+const NEUTRAL_SCORE: TechFreedomScore = {
+  jurisdiction: 3,
+  continuity: 3,
+  surveillance: 3,
+  lockIn: 3,
+  costExposure: 3,
+  isAutoScored: false,
+};
 
 const SYSTEM_TYPES: { value: SystemType; label: string }[] = [
   { value: 'crm', label: 'CRM' },
@@ -50,6 +61,8 @@ const COST_MODELS: { value: NonNullable<System['cost']>['model']; label: string 
 export interface SystemEditFormProps {
   system: System;
   owners: Owner[];
+  /** Whether to offer risk scoring for this system. */
+  techFreedomEnabled?: boolean;
   onSave: (updates: Partial<Omit<System, 'id'>>) => void;
   onCancel: () => void;
 }
@@ -68,6 +81,7 @@ interface Draft {
   importance: string;
   isShadow: boolean;
   notes: string;
+  techFreedomScore?: TechFreedomScore;
 }
 
 function toDraft(system: System): Draft {
@@ -85,6 +99,7 @@ function toDraft(system: System): Draft {
     importance: system.importance != null ? String(system.importance) : '',
     isShadow: system.isShadow === true,
     notes: system.notes ?? '',
+    techFreedomScore: system.techFreedomScore,
   };
 }
 
@@ -107,6 +122,7 @@ function toUpdates(draft: Draft): Partial<Omit<System, 'id'>> {
     importance: !isNaN(importance) ? importance : undefined,
     isShadow: draft.isShadow || undefined,
     notes: draft.notes.trim() || undefined,
+    techFreedomScore: draft.techFreedomScore,
   };
 }
 
@@ -116,7 +132,13 @@ function toUpdates(draft: Draft): Partial<Omit<System, 'id'>> {
  * The wizard only ever asks for a subset of a system's fields, so this is the
  * one place status, URL and notes can be set at all.
  */
-export function SystemEditForm({ system, owners, onSave, onCancel }: SystemEditFormProps) {
+export function SystemEditForm({
+  system,
+  owners,
+  techFreedomEnabled = false,
+  onSave,
+  onCancel,
+}: SystemEditFormProps) {
   const [draft, setDraft] = useState<Draft>(() => toDraft(system));
 
   function update<K extends keyof Draft>(field: K, value: Draft[K]) {
@@ -291,6 +313,49 @@ export function SystemEditForm({ system, owners, onSave, onCancel }: SystemEditF
           className="rounded-lg border border-surface-300 bg-white px-3 py-2 text-base font-body text-primary-950 placeholder:text-primary-400 hover:border-surface-400 focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:outline-none transition-colors duration-150"
         />
       </div>
+
+      {techFreedomEnabled && (
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium text-primary-900 font-body">
+            Technology risk
+          </legend>
+
+          {draft.techFreedomScore ? (
+            <>
+              <RiskDetails
+                score={draft.techFreedomScore}
+                idPrefix={`risk-${system.id}`}
+                defaultOpen
+                onChange={(score) =>
+                  // Any hand edit means this is no longer the database's score
+                  update('techFreedomScore', { ...score, isAutoScored: false })
+                }
+              />
+              <button
+                type="button"
+                onClick={() => update('techFreedomScore', undefined)}
+                className="text-sm text-primary-600 underline underline-offset-2 hover:text-primary-800"
+              >
+                Remove risk scores
+              </button>
+            </>
+          ) : (
+            <div className="rounded-lg border border-dashed border-surface-300 p-3 space-y-2">
+              <p className="text-sm text-primary-600">
+                This system is not in the known tools database, so it has no risk scores. You
+                can assess it yourself.
+              </p>
+              <button
+                type="button"
+                onClick={() => update('techFreedomScore', { ...NEUTRAL_SCORE })}
+                className="btn-secondary text-sm"
+              >
+                Score this system
+              </button>
+            </div>
+          )}
+        </fieldset>
+      )}
 
       <div className="flex gap-3">
         <button type="submit" disabled={nameIsEmpty} className="btn-primary disabled:opacity-50">

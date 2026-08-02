@@ -123,6 +123,12 @@ export function DiagramView({ architecture, isLoading }: DiagramViewProps) {
 
         <div className="flex items-center gap-3">
           <Link
+            href="/view/report"
+            className="btn-secondary text-sm px-3 py-1.5 inline-flex items-center gap-1.5"
+          >
+            Board report
+          </Link>
+          <Link
             href="/view/systems"
             className="btn-secondary text-sm px-3 py-1.5 inline-flex items-center gap-1.5"
           >

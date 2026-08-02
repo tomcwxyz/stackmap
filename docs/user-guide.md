@@ -477,3 +477,69 @@ Your CSV should include columns for system name, type, vendor, and any other det
 - Export your current architecture as JSON before importing, so you have a backup
 - The merge mode is useful for adding new systems discovered during a review without losing existing work
 - After import, walk through the wizard to fill in any gaps the import could not cover (integrations, data categories, owners)
+
+---
+
+## 15. Editing Your Systems
+
+The wizard captures each system once, on the step where you added it. Afterwards,
+**Your systems** (in the top navigation, or from the review and diagram pages) is
+where you change anything.
+
+The table lists every system you have mapped, including shadow tools. You can:
+
+- **Search** by name, supplier or notes
+- **Filter** by function or status
+- **Sort** by any column — click a column heading, click again to reverse it
+- **Edit** a system, which opens a form covering every field
+- **Delete** a system, with a confirmation step
+
+### Details only available here
+
+Some fields are not asked for during the wizard and can only be set from this form:
+
+- **Status** — active, planned, retiring, or legacy. Retiring and legacy systems are
+  drawn differently in the diagrams, so this is worth setting for anything on its
+  way out.
+- **Web address** — where you log in.
+- **Notes** — contract quirks, who set it up, what breaks.
+- **Owner**, **importance** and **cost** can also be corrected here rather than
+  going back through the wizard.
+
+### Scoring a system yourself
+
+If risk assessment is switched on, systems that match Stackmap's known tools
+database are scored automatically. Anything else — a bespoke system, a local
+supplier's portal, a spreadsheet someone built years ago — starts unscored.
+
+Open the system for editing and choose **Score this system** to set all five
+dimensions yourself. Scores you set or adjust by hand are marked as manually
+assessed rather than automatic, so you can tell the two apart later.
+
+---
+
+## 16. The Board Report
+
+**Board report** turns your map into a one-page summary meant to be read by people
+who did not build it — trustees, a funder, a senior management team.
+
+It covers:
+
+- **Headline numbers** — systems, recorded annual cost, areas covered, named owners
+- **What needs attention** — critical systems with no owner, critical work happening
+  on informal tools, fragile connections, areas resting on a single system,
+  personal data on unowned systems, legacy systems, and missing cost data
+- **Systems you could not operate without** — everything scored 8 or above, with
+  owner, cost and whether it holds personal data
+- **Where the money goes** — cost by area
+- **Possible duplication** — where consolidation might save money
+- **Technology risk** — a plain-English summary, if risk assessment is on
+
+Use **Print or save as PDF** to produce a copy for a meeting. The page is styled for
+print: site navigation and buttons are dropped, and sections avoid breaking across
+pages.
+
+!!! note
+    The report describes what you entered. If systems have no cost recorded, the
+    total will understate what you actually spend — the report says so where that
+    applies.
