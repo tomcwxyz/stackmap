@@ -28,12 +28,19 @@ const FREQUENCY_OPTIONS = [
   { value: 'unknown', label: 'Unknown' },
 ] as const;
 
+const RELIABILITY_OPTIONS = [
+  { value: 'reliable', label: 'Reliable \u2014 it just works' },
+  { value: 'fragile', label: 'Fragile \u2014 it breaks or needs chasing' },
+  { value: 'unknown', label: "Don't know" },
+] as const;
+
 interface IntegrationDraft {
   sourceSystemId: string;
   targetSystemId: string;
   type: 'api' | 'file_transfer' | 'manual' | 'webhook' | 'database_link' | 'unknown';
   direction: 'one_way' | 'two_way';
   frequency: 'real_time' | 'scheduled' | 'on_demand' | 'unknown';
+  reliability: 'reliable' | 'fragile' | 'unknown';
   description: string;
 }
 
@@ -48,6 +55,7 @@ const EMPTY_DRAFT: IntegrationDraft = {
   type: 'unknown',
   direction: 'one_way',
   frequency: 'unknown',
+  reliability: 'unknown',
   description: '',
 };
 
@@ -69,6 +77,7 @@ export function IntegrationMatrix() {
       type: intg.type,
       direction: intg.direction,
       frequency: intg.frequency,
+      reliability: intg.reliability ?? 'unknown',
       description: intg.description ?? '',
     }));
   });
@@ -94,7 +103,7 @@ export function IntegrationMatrix() {
       direction: connection.direction,
       frequency: connection.frequency,
       description: connection.description || undefined,
-      reliability: 'unknown',
+      reliability: connection.reliability,
     });
 
     setAdded((prev) => [...prev, { ...connection, id }]);
@@ -204,6 +213,11 @@ export function IntegrationMatrix() {
                   <span className="text-sm text-primary-500 ml-2">
                     ({INTEGRATION_TYPES.find((t) => t.value === intg.type)?.label})
                   </span>
+                  {intg.reliability === 'fragile' && (
+                    <span className="text-xs bg-amber-100 text-amber-800 rounded px-1.5 py-0.5 ml-2 font-medium">
+                      Fragile
+                    </span>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -289,6 +303,19 @@ export function IntegrationMatrix() {
             onChange={(e) => updateField('frequency', e.target.value as IntegrationDraft['frequency'])}
           >
             {FREQUENCY_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </Select>
+
+          <Select
+            id="integration-reliability"
+            label="How well does it work?"
+            value={draft.reliability}
+            onChange={(e) => updateField('reliability', e.target.value as IntegrationDraft['reliability'])}
+          >
+            {RELIABILITY_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>

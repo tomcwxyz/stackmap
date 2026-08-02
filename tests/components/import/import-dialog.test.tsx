@@ -277,6 +277,52 @@ describe('ImportDialog', () => {
       expect(addBtn).toBeInTheDocument();
     });
 
+    it('says how many rows are already in the map', async () => {
+      const csv = `name\nXero\nSlack`;
+      const file = new File([csv], 'tools.csv', { type: 'text/csv' });
+      render(
+        <ImportDialog
+          open
+          mode="merge"
+          onClose={vi.fn()}
+          onImport={vi.fn()}
+          onMergeCsv={vi.fn()}
+          existingArchitecture={makeValidArchitecture()}
+        />,
+      );
+      const user = userEvent.setup();
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+      await user.upload(input, file);
+
+      const preview = await screen.findByTestId('merge-preview');
+      // Xero is already mapped; Slack is not
+      expect(preview).toHaveTextContent(/1 system is new/i);
+      expect(preview).toHaveTextContent(/1 is already in your map/i);
+      expect(preview).toHaveTextContent(/updated rather than added again/i);
+    });
+
+    it('says when nothing in the file is already mapped', async () => {
+      const csv = `name\nSlack\nZoom`;
+      const file = new File([csv], 'tools.csv', { type: 'text/csv' });
+      render(
+        <ImportDialog
+          open
+          mode="merge"
+          onClose={vi.fn()}
+          onImport={vi.fn()}
+          onMergeCsv={vi.fn()}
+          existingArchitecture={makeValidArchitecture()}
+        />,
+      );
+      const user = userEvent.setup();
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+      await user.upload(input, file);
+
+      const preview = await screen.findByTestId('merge-preview');
+      expect(preview).toHaveTextContent(/2 systems are new/i);
+      expect(preview).toHaveTextContent(/none of them are already in your map/i);
+    });
+
     it('calls onMergeCsv instead of onImport in merge mode', async () => {
       const csv = `name\nSlack`;
       const file = new File([csv], 'tools.csv', { type: 'text/csv' });

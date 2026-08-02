@@ -32,12 +32,18 @@ const SYSTEM_TYPE_LABELS: Record<string, string> = {
   other: 'other',
 };
 
-function annualise(system: System): number {
+/**
+ * A system's cost as an annual figure. Systems with no cost recorded, and
+ * systems recorded as free, both come out as 0.
+ */
+export function annualiseCost(system: System): number {
   if (!system.cost) return 0;
   if (system.cost.model === 'free') return 0;
   if (system.cost.period === 'monthly') return system.cost.amount * 12;
   return system.cost.amount;
 }
+
+const annualise = annualiseCost;
 
 export function calculateCostSummary(
   systems: System[],

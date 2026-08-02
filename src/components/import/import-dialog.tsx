@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { validateArchitectureJson, parseCsvSystems, csvRowsToArchitecture } from '@/lib/import';
+import { previewCsvMerge } from '@/lib/import/csv-to-architecture';
 import { CsvPreviewTable } from './csv-preview-table';
 import type { Architecture } from '@/lib/types';
 import type { CsvSystemRow } from '@/lib/import';
@@ -15,6 +16,8 @@ export interface ImportDialogProps {
   onClose: () => void;
   onImport: (arch: Architecture) => void;
   onMergeCsv?: (rows: CsvSystemRow[]) => void;
+  /** The map being merged into, used to preview what a merge would change. */
+  existingArchitecture?: Architecture | null;
 }
 
 interface ErrorState {
@@ -22,7 +25,14 @@ interface ErrorState {
   details?: string[];
 }
 
-export function ImportDialog({ open, mode = 'replace', onClose, onImport, onMergeCsv }: ImportDialogProps) {
+export function ImportDialog({
+  open,
+  mode = 'replace',
+  onClose,
+  onImport,
+  onMergeCsv,
+  existingArchitecture,
+}: ImportDialogProps) {
   const isMerge = mode === 'merge';
   const [step, setStep] = useState<ImportStep>(isMerge ? 'file' : 'format');
   const [format, setFormat] = useState<ImportFormat>(isMerge ? 'csv' : 'json');
@@ -221,6 +231,11 @@ export function ImportDialog({ open, mode = 'replace', onClose, onImport, onMerg
               warnings={csvWarnings}
               onChange={setCsvRows}
               mode={mode}
+              mergePreview={
+                isMerge && existingArchitecture
+                  ? previewCsvMerge(csvRows, existingArchitecture)
+                  : undefined
+              }
               onImport={(rows) => {
                 if (isMerge && onMergeCsv) {
                   onMergeCsv(rows);
@@ -390,17 +405,47 @@ interface CsvPreviewStepProps {
   warnings: string[];
   onChange: (rows: CsvSystemRow[]) => void;
   mode: 'replace' | 'merge';
+  /** Present only when merging into a known map. */
+  mergePreview?: { newCount: number; updatedCount: number };
   onImport: (rows: CsvSystemRow[]) => void;
   onCancel: () => void;
   firstRef: React.RefObject<HTMLButtonElement | null>;
 }
 
-function CsvPreviewStep({ rows, warnings, onChange, mode, onImport, onCancel, firstRef }: CsvPreviewStepProps) {
+function CsvPreviewStep({
+  rows,
+  warnings,
+  onChange,
+  mode,
+  mergePreview,
+  onImport,
+  onCancel,
+  firstRef,
+}: CsvPreviewStepProps) {
+  const actionLabel = mergePreview
+    ? `Merge ${rows.length} ${rows.length === 1 ? 'row' : 'rows'}`
+    : `${mode === 'merge' ? 'Add' : 'Import'} ${rows.length} ${rows.length === 1 ? 'system' : 'systems'}`;
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-primary-700">
         Found <span className="font-semibold">{rows.length}</span> systems in the CSV file.
       </p>
+      {mergePreview && (
+        <p className="text-sm text-primary-700" data-testid="merge-preview">
+          <span className="font-semibold">{mergePreview.newCount}</span>{' '}
+          {mergePreview.newCount === 1 ? 'system is' : 'systems are'} new.{' '}
+          {mergePreview.updatedCount > 0 ? (
+            <>
+              <span className="font-semibold">{mergePreview.updatedCount}</span>{' '}
+              {mergePreview.updatedCount === 1 ? 'is' : 'are'} already in your map and will be
+              updated rather than added again.
+            </>
+          ) : (
+            'None of them are already in your map.'
+          )}
+        </p>
+      )}
       <CsvPreviewTable rows={rows} onChange={onChange} />
       {warnings.length > 0 && (
         <ul className="text-sm text-amber-700">
@@ -416,7 +461,7 @@ function CsvPreviewStep({ rows, warnings, onChange, mode, onImport, onCancel, fi
           onClick={() => onImport(rows)}
           className="inline-flex items-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
         >
-          {mode === 'merge' ? 'Add' : 'Import'} {rows.length} {rows.length === 1 ? 'system' : 'systems'}
+          {actionLabel}
         </button>
         <button
           type="button"

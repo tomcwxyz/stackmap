@@ -426,6 +426,11 @@ export function ReviewSummary() {
                   <span className="text-xs bg-surface-200 text-primary-500 rounded px-1.5 py-0.5">
                     {intg.type}
                   </span>
+                  {intg.reliability === 'fragile' && (
+                    <span className="text-xs bg-amber-100 text-amber-800 rounded px-1.5 py-0.5 font-medium">
+                      Fragile
+                    </span>
+                  )}
                 </li>
               );
             })}
@@ -672,6 +677,15 @@ export function ReviewSummary() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
             View diagram
+          </Link>
+          <Link
+            href="/view/systems"
+            className="bg-primary-700 hover:bg-primary-600 text-primary-100 px-5 py-2.5 rounded-lg font-semibold text-sm inline-flex items-center gap-2 transition-colors focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:ring-offset-2 focus-visible:ring-offset-primary-900"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            </svg>
+            Edit your systems
           </Link>
           <button
             type="button"

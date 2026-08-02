@@ -135,11 +135,51 @@ describe('IntegrationMatrix', () => {
     expect(screen.queryByText(/connections added/i)).not.toBeInTheDocument();
   });
 
-  it('shows integration type, direction, and frequency selects', () => {
+  it('shows integration type, direction, frequency and reliability selects', () => {
     render(<IntegrationMatrix />);
     expect(screen.getByLabelText(/how are they connected/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/direction/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/how often/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/how well does it work/i)).toBeInTheDocument();
+  });
+
+  it('records how well a connection works', async () => {
+    const user = userEvent.setup();
+    render(<IntegrationMatrix />);
+
+    await user.selectOptions(screen.getByLabelText(/from system/i), 'sys-1');
+    await user.selectOptions(screen.getByLabelText(/to system/i), 'sys-2');
+    await user.selectOptions(screen.getByLabelText(/how well does it work/i), 'fragile');
+    await user.click(screen.getByRole('button', { name: /add connection/i }));
+
+    expect(addIntegrationMock).toHaveBeenCalledWith(
+      expect.objectContaining({ reliability: 'fragile' }),
+    );
+  });
+
+  it('flags a fragile connection in the list', async () => {
+    const user = userEvent.setup();
+    render(<IntegrationMatrix />);
+
+    await user.selectOptions(screen.getByLabelText(/from system/i), 'sys-1');
+    await user.selectOptions(screen.getByLabelText(/to system/i), 'sys-2');
+    await user.selectOptions(screen.getByLabelText(/how well does it work/i), 'fragile');
+    await user.click(screen.getByRole('button', { name: /add connection/i }));
+
+    expect(screen.getByText('Fragile')).toBeInTheDocument();
+  });
+
+  it('defaults reliability to unknown when not answered', async () => {
+    const user = userEvent.setup();
+    render(<IntegrationMatrix />);
+
+    await user.selectOptions(screen.getByLabelText(/from system/i), 'sys-1');
+    await user.selectOptions(screen.getByLabelText(/to system/i), 'sys-2');
+    await user.click(screen.getByRole('button', { name: /add connection/i }));
+
+    expect(addIntegrationMock).toHaveBeenCalledWith(
+      expect.objectContaining({ reliability: 'unknown' }),
+    );
   });
 
   it('saves a connection as soon as it is added, not on continue', async () => {

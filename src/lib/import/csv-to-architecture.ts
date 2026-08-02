@@ -94,6 +94,50 @@ export function csvRowsToArchitecture(
   };
 }
 
+/** Systems are matched by name, ignoring case and surrounding whitespace. */
+function matchKey(name: string): string {
+  return name.trim().toLowerCase();
+}
+
+function rowCost(row: CsvSystemRow): System['cost'] {
+  if (!row.cost) return undefined;
+  return {
+    amount: row.cost,
+    period: row.costPeriod === 'monthly' ? 'monthly' : 'annual',
+    model: 'subscription',
+  };
+}
+
+/**
+ * How a merge would change the map, without changing it.
+ *
+ * Rows that name a system already in the map update it rather than adding a
+ * second copy, so the counts tell the user what to expect before they commit.
+ */
+export function previewCsvMerge(
+  rows: CsvSystemRow[],
+  existing: Architecture,
+): { newCount: number; updatedCount: number } {
+  const existingKeys = new Set(existing.systems.map((s) => matchKey(s.name)));
+  const seen = new Set<string>();
+  let newCount = 0;
+  let updatedCount = 0;
+
+  for (const row of rows) {
+    const key = matchKey(row.name);
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    if (existingKeys.has(key)) {
+      updatedCount++;
+    } else {
+      newCount++;
+    }
+  }
+
+  return { newCount, updatedCount };
+}
+
 export function mergeCsvIntoArchitecture(
   rows: CsvSystemRow[],
   existing: Architecture,
@@ -121,41 +165,60 @@ export function mergeCsvIntoArchitecture(
     }
   }
 
-  // Create new systems
-  const newSystems: System[] = rows.map((row) => {
-    const fnId = row.matchedFunction
-      ? functionIdByType.get(row.matchedFunction)
-      : undefined;
-    const matchedTool = findMatchingTool(row.name, KNOWN_TOOLS);
+  // Systems already in the map, by match key, so a re-imported row updates the
+  // system it names rather than creating a duplicate of it.
+  const systems = existing.systems.map((s) => ({ ...s }));
+  const systemByKey = new Map<string, System>();
+  for (const system of systems) {
+    systemByKey.set(matchKey(system.name), system);
+  }
 
-    return {
+  for (const row of rows) {
+    const key = matchKey(row.name);
+    const fnId = row.matchedFunction ? functionIdByType.get(row.matchedFunction) : undefined;
+    const matchedTool = findMatchingTool(row.name, KNOWN_TOOLS);
+    const score = matchedTool?.score
+      ? { ...matchedTool.score, isAutoScored: true }
+      : undefined;
+
+    const current = systemByKey.get(key);
+
+    if (current) {
+      // Fill gaps only. Anything the user has already entered by hand wins over
+      // a spreadsheet column, since the spreadsheet is usually the older source.
+      current.vendor ??= row.vendor;
+      current.cost ??= rowCost(row);
+      current.techFreedomScore ??= score;
+      if (current.hosting === 'unknown' && row.hosting) {
+        current.hosting = row.hosting as System['hosting'];
+      }
+      if (fnId && !current.functionIds.includes(fnId)) {
+        current.functionIds = [...current.functionIds, fnId];
+      }
+      continue;
+    }
+
+    const system: System = {
       id: uuidv4(),
-      name: row.name,
+      name: row.name.trim(),
       type: row.matchedType,
       vendor: row.vendor,
       hosting: (row.hosting as System['hosting']) ?? 'unknown',
       status: (row.status as System['status']) ?? 'active',
       functionIds: fnId ? [fnId] : [],
       serviceIds: [],
-      cost: row.cost
-        ? {
-            amount: row.cost,
-            period: (row.costPeriod === 'monthly' ? 'monthly' : 'annual') as
-              | 'monthly'
-              | 'annual',
-            model: 'subscription' as const,
-          }
-        : undefined,
-      techFreedomScore: matchedTool?.score
-        ? { ...matchedTool.score, isAutoScored: true }
-        : undefined,
+      cost: rowCost(row),
+      techFreedomScore: score,
     };
-  });
+
+    systems.push(system);
+    systemByKey.set(key, system);
+  }
 
   return {
     ...existing,
     organisation: { ...existing.organisation, updatedAt: now },
     functions: [...existing.functions, ...newFunctions],
-    systems: [...existing.systems, ...newSystems],
+    systems,
   };
 }

@@ -1,4 +1,5 @@
 import type { Architecture, System } from '@/lib/types';
+import { annualiseCost } from '@/lib/cost-analysis';
 
 // ─── Label sanitisation ───
 
@@ -51,16 +52,9 @@ function integrationLabel(description?: string, type?: string): string {
 
 // ─── Cost formatting for diagram labels ───
 
-function annualiseCost(system: System): number | null {
-  if (!system.cost) return null;
-  if (system.cost.model === 'free') return 0;
-  if (system.cost.period === 'monthly') return system.cost.amount * 12;
-  return system.cost.amount;
-}
-
 function systemLabel(system: System, _owners?: Architecture['owners']): string {
   let label = labelOr(sanitiseLabel(system.name), 'Unnamed system');
-  const annual = annualiseCost(system);
+  const annual = system.cost ? annualiseCost(system) : null;
   if (annual !== null && annual > 0) {
     label = `${label} - £${annual.toLocaleString('en-GB')}/yr`;
   }

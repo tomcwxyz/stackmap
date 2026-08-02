@@ -39,6 +39,7 @@ function WizardHeader() {
       <ImportDialog
         open={showImport}
         mode="merge"
+        existingArchitecture={architecture}
         onClose={() => setShowImport(false)}
         onImport={(arch) => {
           replaceArchitecture(arch);
