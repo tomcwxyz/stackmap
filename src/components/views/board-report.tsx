@@ -3,7 +3,11 @@
 import Link from 'next/link';
 import { useArchitecture } from '@/hooks/useArchitecture';
 import { findAttentionPoints } from '@/lib/report/attention';
-import { annualiseCost, calculateCostSummary, findSystemOverlaps, formatCurrency } from '@/lib/cost-analysis';
+import { RiskImportanceGrid } from '@/components/analysis/risk-importance-grid';
+import { buildRiskImportanceMatrix } from '@/lib/analysis/risk-importance';
+import { annualiseCost, calculateCostSummary, formatCurrency } from '@/lib/cost-analysis';
+import { findDuplication } from '@/lib/analysis/duplication';
+import { resolveStaffCount } from '@/lib/cost-estimates';
 import { getImportanceTier } from '@/lib/importance';
 import { aggregateRisk, riskLevel, RISK_DIMENSIONS } from '@/lib/techfreedom/risk';
 
@@ -56,8 +60,10 @@ export function BoardReport() {
   const { organisation, systems, functions, integrations, owners, dataCategories, metadata } =
     architecture;
 
-  const costSummary = calculateCostSummary(systems, functions);
-  const overlaps = findSystemOverlaps(systems, functions);
+  const costSummary = calculateCostSummary(systems, functions, {
+    staffCount: resolveStaffCount(organisation),
+  });
+  const duplication = findDuplication(systems, functions);
   const attention = findAttentionPoints(architecture);
   const techFreedomEnabled = metadata?.techFreedomEnabled === true;
   const risk = techFreedomEnabled ? aggregateRisk(systems) : null;
@@ -72,7 +78,10 @@ export function BoardReport() {
 
   const headline = [
     { label: 'Systems', value: String(systems.length) },
-    { label: 'Annual cost recorded', value: formatCurrency(costSummary.totalAnnual) },
+    {
+      label: costSummary.estimatedCount > 0 ? 'Annual cost (est.)' : 'Annual cost recorded',
+      value: formatCurrency(costSummary.totalAnnual + costSummary.estimatedAnnual),
+    },
     { label: 'Areas covered', value: String(functions.length) },
     { label: 'Named owners', value: String(owners.length) },
   ];
@@ -122,9 +131,23 @@ export function BoardReport() {
           </dl>
           {costSummary.uncostCount > 0 && (
             <p className="text-xs text-primary-600 mt-2">
-              {costSummary.uncostCount}{' '}
-              {costSummary.uncostCount === 1 ? 'system has' : 'systems have'} no cost recorded,
-              so the true figure is higher.
+              {formatCurrency(costSummary.totalAnnual)} of that is recorded.
+              {costSummary.estimatedCount > 0 && (
+                <>
+                  {' '}
+                  {formatCurrency(costSummary.estimatedAnnual)} is estimated from typical pricing
+                  for {costSummary.estimatedCount}{' '}
+                  {costSummary.estimatedCount === 1 ? 'system' : 'systems'}.
+                </>
+              )}{' '}
+              {costSummary.uncostCount - costSummary.estimatedCount > 0 && (
+                <>
+                  {costSummary.uncostCount - costSummary.estimatedCount}{' '}
+                  {costSummary.uncostCount - costSummary.estimatedCount === 1
+                    ? 'system could not be priced at all, so the real figure is higher still.'
+                    : 'systems could not be priced at all, so the real figure is higher still.'}
+                </>
+              )}
             </p>
           )}
         </section>
@@ -220,19 +243,54 @@ export function BoardReport() {
         )}
 
         {/* Possible savings */}
-        {overlaps.length > 0 && (
+        {duplication.length > 0 && (
           <section className="break-inside-avoid" aria-labelledby="report-overlaps">
             <h2 id="report-overlaps" className="text-xl font-display font-bold text-primary-900 mb-3">
               Possible duplication
             </h2>
-            <ul className="space-y-1.5 text-sm" role="list">
-              {overlaps.map((overlap) => (
-                <li key={`${overlap.functionId}-${overlap.overlapType}`} className="text-primary-800">
-                  <span className="font-medium">{overlap.functionName}:</span>{' '}
-                  {overlap.overlapType} — {overlap.systems.map((s) => s.name).join(', ')}
-                </li>
-              ))}
-            </ul>
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-surface-300 text-left">
+                  <th scope="col" className="py-1.5 pr-3 font-semibold">Doing the same job</th>
+                  <th scope="col" className="py-1.5 pr-3 font-semibold">Systems</th>
+                  <th scope="col" className="py-1.5 pr-3 font-semibold">Costing</th>
+                  <th scope="col" className="py-1.5 font-semibold">Could free up</th>
+                </tr>
+              </thead>
+              <tbody>
+                {duplication.map((group) => (
+                  <tr key={group.key} className="border-b border-surface-200">
+                    <td className="py-1.5 pr-3 font-medium text-primary-900">{group.label}</td>
+                    <td className="py-1.5 pr-3 text-primary-800">
+                      {group.systems.map((s) => s.name).join(', ')}
+                    </td>
+                    <td className="py-1.5 pr-3 text-primary-800">
+                      {group.combinedAnnualCost > 0
+                        ? `${formatCurrency(group.combinedAnnualCost)}/yr`
+                        : 'Not recorded'}
+                    </td>
+                    <td className="py-1.5 text-primary-800">
+                      {group.potentialSaving > 0
+                        ? `up to ${formatCurrency(group.potentialSaving)}/yr`
+                        : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        )}
+
+        {/* Risk against importance */}
+        {techFreedomEnabled && buildRiskImportanceMatrix(systems).plotted.length > 0 && (
+          <section className="break-inside-avoid" aria-labelledby="report-priorities">
+            <h2
+              id="report-priorities"
+              className="text-xl font-display font-bold text-primary-900 mb-3"
+            >
+              What to deal with first
+            </h2>
+            <RiskImportanceGrid systems={systems} />
           </section>
         )}
 

@@ -6,6 +6,7 @@ import {
   DEFAULT_STAFF,
   SIZE_MULTIPLIERS,
   type OrgSize,
+  resolveStaffCount,
 } from '@/lib/cost-estimates';
 import type { ToolPricing, PricingTier } from '@/lib/techfreedom/types';
 
@@ -224,5 +225,23 @@ describe('SIZE_MULTIPLIERS (backward compatibility)', () => {
 
   it('uses 1.0 as the base for small', () => {
     expect(SIZE_MULTIPLIERS.small).toBe(1.0);
+  });
+});
+
+describe('resolveStaffCount', () => {
+  it('uses the staff count the organisation gave', () => {
+    expect(resolveStaffCount({ staffCount: 42, size: 'micro' })).toBe(42);
+  });
+
+  it('falls back to the size band when staff count is missing', () => {
+    expect(resolveStaffCount({ size: 'medium' })).toBe(DEFAULT_STAFF.medium);
+  });
+
+  it('ignores a zero staff count, which tells us nothing', () => {
+    expect(resolveStaffCount({ staffCount: 0, size: 'large' })).toBe(DEFAULT_STAFF.large);
+  });
+
+  it('assumes a small organisation when neither is known', () => {
+    expect(resolveStaffCount({})).toBe(DEFAULT_STAFF.small);
   });
 });

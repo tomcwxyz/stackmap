@@ -1,6 +1,7 @@
 import type { Architecture, System } from '@/lib/types';
 import { annualiseCost, calculateCostSummary, formatCurrency } from '@/lib/cost-analysis';
 import { totalScore, riskLevel } from '@/lib/techfreedom/risk';
+import { buildRiskImportanceMatrix, QUADRANTS } from '@/lib/analysis/risk-importance';
 
 // ─── Helpers ───
 
@@ -204,6 +205,29 @@ export function generateMarkdownExport(arch: Architecture): string {
       lines.push(`| ${sys.name} | ${formatType(sys.type)} | ${impStr} |`);
     }
     lines.push('');
+  }
+
+  // What to deal with first — risk crossed with importance
+  if (techFreedomEnabled) {
+    const matrix = buildRiskImportanceMatrix(systems);
+    if (matrix.plotted.length > 0) {
+      lines.push('## What to Deal With First');
+      lines.push('');
+      for (const quadrant of QUADRANTS) {
+        const entries = matrix.byQuadrant[quadrant.key];
+        if (entries.length === 0) continue;
+        lines.push(`### ${quadrant.label}`);
+        lines.push('');
+        lines.push(`${quadrant.description}`);
+        lines.push('');
+        for (const entry of entries) {
+          lines.push(
+            `- **${entry.system.name}** — importance ${entry.importance}/10, risk ${entry.riskTotal}/25 (${capitalize(entry.level)})`,
+          );
+        }
+        lines.push('');
+      }
+    }
   }
 
   // Risk Summary (TechFreedom)

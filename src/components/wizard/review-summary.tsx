@@ -5,10 +5,14 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useArchitecture } from '@/hooks/useArchitecture';
 import { aggregateRisk, totalScore, riskLevel, RISK_DIMENSIONS } from '@/lib/techfreedom/risk';
-import { calculateCostSummary, findSystemOverlaps, formatCurrency } from '@/lib/cost-analysis';
+import { calculateCostSummary, formatCurrency } from '@/lib/cost-analysis';
+import { resolveStaffCount } from '@/lib/cost-estimates';
+import { findDuplication } from '@/lib/analysis/duplication';
 import { generateMarkdownExport } from '@/lib/export/markdown';
 import { generateCsvExport } from '@/lib/export/csv';
 import { BullseyeDiagram } from './bullseye-diagram';
+import { RiskImportanceGrid } from '@/components/analysis/risk-importance-grid';
+import { buildRiskImportanceMatrix } from '@/lib/analysis/risk-importance';
 import { getImportanceTier } from '@/lib/importance';
 
 /** Colour accents per function type for visual distinction in the summary */
@@ -50,11 +54,13 @@ export function ReviewSummary() {
   const handleExportJson = useCallback(() => {
     const arch = getArchitecture();
     if (!arch) return;
-    const costSummary = calculateCostSummary(arch.systems, arch.functions);
-    const exportOverlaps = findSystemOverlaps(arch.systems, arch.functions);
+    const costSummary = calculateCostSummary(arch.systems, arch.functions, {
+      staffCount: resolveStaffCount(arch.organisation),
+    });
+    const exportDuplication = findDuplication(arch.systems, arch.functions);
     const techFreedomOn = arch.metadata?.techFreedomEnabled === true;
     const exportRiskSummary = techFreedomOn ? aggregateRisk(arch.systems) : null;
-    const exportData = { ...arch, costSummary, overlaps: exportOverlaps, ...(exportRiskSummary ? { riskSummary: exportRiskSummary } : {}) };
+    const exportData = { ...arch, costSummary, duplication: exportDuplication, ...(exportRiskSummary ? { riskSummary: exportRiskSummary } : {}) };
     const json = JSON.stringify(exportData, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -105,8 +111,10 @@ export function ReviewSummary() {
   const techFreedomEnabled = architecture.metadata?.techFreedomEnabled === true;
   const riskSummary = techFreedomEnabled ? aggregateRisk(systems) : null;
 
-  const costSummary = calculateCostSummary(systems, functions);
-  const overlaps = findSystemOverlaps(systems, functions);
+  const costSummary = calculateCostSummary(systems, functions, {
+    staffCount: resolveStaffCount(organisation),
+  });
+  const duplication = findDuplication(systems, functions);
   const hasCostData = costSummary.systemCount > 0;
 
   const totalItems = functions.length + systems.length + services.length +
@@ -487,6 +495,15 @@ export function ReviewSummary() {
               {formatCurrency(costSummary.totalAnnual)}
               <span className="text-base font-normal text-primary-500">/year</span>
             </p>
+            {costSummary.estimatedCount > 0 && (
+              <p className="text-sm text-primary-600 mt-1" data-testid="cost-estimate-note">
+                Plus roughly {formatCurrency(costSummary.estimatedAnnual)}/year estimated for{' '}
+                {costSummary.estimatedCount}{' '}
+                {costSummary.estimatedCount === 1 ? 'system' : 'systems'} with no cost recorded
+                &mdash; about {formatCurrency(costSummary.totalAnnual + costSummary.estimatedAnnual)}
+                /year in total.
+              </p>
+            )}
           </div>
 
           {/* Breakdown by function */}
@@ -583,6 +600,24 @@ export function ReviewSummary() {
         );
       })()}
 
+      {/* Risk against importance — only useful once both are known */}
+      {techFreedomEnabled && buildRiskImportanceMatrix(systems).plotted.length > 0 && (
+        <section
+          className="bg-surface-100 border border-surface-300 rounded-lg p-4 sm:p-6 space-y-3"
+          data-testid="risk-importance-section"
+        >
+          <div>
+            <h2 className="font-display font-semibold text-primary-900 text-lg">
+              What to deal with first
+            </h2>
+            <p className="text-sm text-primary-600">
+              Your systems crossed against how much you depend on them and how risky they are.
+            </p>
+          </div>
+          <RiskImportanceGrid systems={systems} />
+        </section>
+      )}
+
       {/* Shadow & Informal Tools */}
       {systems.some(s => s.isShadow) && (
         <section className="bg-surface-100 border border-surface-300 rounded-lg p-4 sm:p-6 space-y-3" data-testid="shadow-tools">
@@ -613,21 +648,26 @@ export function ReviewSummary() {
         </section>
       )}
 
-      {/* Potential overlaps */}
-      {overlaps.length > 0 && (
+      {/* Systems that appear to do the same job */}
+      {duplication.length > 0 && (
         <section className="bg-amber-50 border border-amber-300 rounded-lg p-4 sm:p-6 space-y-3" data-testid="overlap-warnings">
           <h2 className="font-display font-semibold text-amber-900 text-lg">
             Potential overlaps
           </h2>
-          <ul className="space-y-2" role="list">
-            {overlaps.map((overlap) => (
-              <li key={`${overlap.functionId}-${overlap.overlapType}`} className="text-sm text-amber-800">
+          <ul className="space-y-3" role="list">
+            {duplication.map((group) => (
+              <li key={group.key} className="text-sm text-amber-800">
                 <p className="font-medium">
-                  You have {overlap.overlapType} under {overlap.functionName}:{' '}
-                  {overlap.systems.map((s) => s.name).join(', ')}
+                  You have {group.systems.length} {group.label.toLowerCase()} systems:{' '}
+                  {group.systems.map((s) => s.name).join(', ')}
+                  {group.functionNames.length > 0 && (
+                    <span className="font-normal"> ({group.functionNames.join(', ')})</span>
+                  )}
                 </p>
                 <p className="text-amber-700 text-xs mt-0.5">
-                  Consider whether both are needed, or if one could replace the other.
+                  {group.potentialSaving > 0
+                    ? `Together they cost ${formatCurrency(group.combinedAnnualCost)}/year. Consolidating onto one could free up as much as ${formatCurrency(group.potentialSaving)}/year.`
+                    : 'Consider whether all of them are needed, or if one could replace the others.'}
                 </p>
               </li>
             ))}

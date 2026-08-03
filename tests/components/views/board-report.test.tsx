@@ -220,6 +220,39 @@ describe('BoardReport', () => {
     expect(within(section).getByText('Xero')).toBeInTheDocument();
   });
 
+  it('shows what to deal with first when risk and importance are both known', () => {
+    const arch = makeArchitecture();
+    arch.metadata.techFreedomEnabled = true;
+    arch.systems[0].techFreedomScore = {
+      jurisdiction: 4,
+      continuity: 4,
+      surveillance: 4,
+      lockIn: 4,
+      costExposure: 4,
+      isAutoScored: true,
+    };
+    currentArchitecture = arch;
+
+    render(<BoardReport />);
+
+    const section = screen
+      .getByRole('heading', { name: /what to deal with first/i })
+      .closest('section')!;
+    // Xero: importance 9, risk 20
+    expect(
+      within(section).getByRole('heading', { name: /critical and exposed/i }),
+    ).toBeInTheDocument();
+    expect(within(section).getByText('Xero')).toBeInTheDocument();
+  });
+
+  it('omits what to deal with first when risk assessment is off', () => {
+    render(<BoardReport />);
+
+    expect(
+      screen.queryByRole('heading', { name: /what to deal with first/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it('notes what the figures are based on', () => {
     render(<BoardReport />);
     expect(screen.getByText(/should be checked before decisions/i)).toBeInTheDocument();

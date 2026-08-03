@@ -155,7 +155,10 @@ export function DiagramView({ architecture, isLoading }: DiagramViewProps) {
         if (cs.systemCount === 0) return null;
         return (
           <p className="text-sm text-primary-600 mb-4" data-testid="diagram-cost-summary">
-            Total annual cost: {formatCurrency(cs.totalAnnual)} across {cs.systemCount} {cs.systemCount === 1 ? 'system' : 'systems'}
+            Total annual cost: {formatCurrency(cs.totalAnnual)} across{' '}
+            {cs.systemCount} of {architecture.systems.length}{' '}
+            {architecture.systems.length === 1 ? 'system' : 'systems'}
+            {cs.uncostCount > 0 && ' with cost recorded'}
           </p>
         );
       })()}

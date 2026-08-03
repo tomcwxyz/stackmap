@@ -394,6 +394,95 @@ describe('ReviewSummary', () => {
       mockContextValue.getArchitecture = origGet;
     });
 
+    it('says what the systems with no recorded cost are likely to add', () => {
+      const arch: Architecture = {
+        ...fullArchitecture,
+        organisation: { ...fullArchitecture.organisation, staffCount: 15 },
+        systems: [
+          {
+            ...fullArchitecture.systems[0],
+            cost: { amount: 400, period: 'annual', model: 'subscription' },
+          },
+          // Recognised by the tools database, but no cost recorded here
+          {
+            id: 'sys-slack',
+            name: 'Slack',
+            type: 'messaging',
+            hosting: 'cloud',
+            status: 'active',
+            functionIds: ['fn-1'],
+            serviceIds: [],
+          },
+        ],
+      };
+
+      const origArch = mockContextValue.architecture;
+      mockContextValue.architecture = arch;
+
+      render(<ReviewSummary />);
+
+      const note = screen.getByTestId('cost-estimate-note');
+      expect(note).toHaveTextContent(/plus roughly/i);
+      expect(note).toHaveTextContent(/1 system with no cost recorded/i);
+
+      mockContextValue.architecture = origArch;
+    });
+
+    it('crosses risk with importance once both are known', () => {
+      const arch: Architecture = {
+        ...fullArchitecture,
+        systems: [
+          {
+            ...fullArchitecture.systems[0],
+            importance: 9,
+            techFreedomScore: {
+              jurisdiction: 4, continuity: 4, surveillance: 4, lockIn: 4, costExposure: 4,
+              isAutoScored: true,
+            },
+          },
+        ],
+        metadata: { ...fullArchitecture.metadata, techFreedomEnabled: true },
+      };
+
+      const origArch = mockContextValue.architecture;
+      mockContextValue.architecture = arch;
+
+      render(<ReviewSummary />);
+
+      expect(screen.getByTestId('risk-importance-section')).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: /critical and exposed/i }),
+      ).toBeInTheDocument();
+
+      mockContextValue.architecture = origArch;
+    });
+
+    it('omits the risk against importance section when nothing can be plotted', () => {
+      const arch: Architecture = {
+        ...fullArchitecture,
+        // Risk scores but no importance, so there is nothing to cross
+        systems: [
+          {
+            ...fullArchitecture.systems[0],
+            techFreedomScore: {
+              jurisdiction: 4, continuity: 4, surveillance: 4, lockIn: 4, costExposure: 4,
+              isAutoScored: true,
+            },
+          },
+        ],
+        metadata: { ...fullArchitecture.metadata, techFreedomEnabled: true },
+      };
+
+      const origArch = mockContextValue.architecture;
+      mockContextValue.architecture = arch;
+
+      render(<ReviewSummary />);
+
+      expect(screen.queryByTestId('risk-importance-section')).not.toBeInTheDocument();
+
+      mockContextValue.architecture = origArch;
+    });
+
     it('does NOT show Technology Risk Summary when techFreedomEnabled is false', () => {
       // Default fullArchitecture has no techFreedomEnabled
       render(<ReviewSummary />);
