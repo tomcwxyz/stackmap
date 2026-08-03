@@ -29,7 +29,9 @@ Stackmap is an open source tool that solves this problem. It provides a guided w
 - **Board report** — a printable one-page summary for trustees and funders
 - **Live architecture map sidebar** showing your map as you build it
 - **Mermaid diagram generation** for visual architecture maps
-- **Cost analysis** with overlap detection
+- **Cost analysis** with estimates for uncosted systems, and duplication detection across the whole map
+- **Risk against importance** — the four-quadrant view of what to deal with first
+- **Contract renewals** with notice-period warnings and calendar export
 - **JSON, Markdown, CSV, SVG and PNG export** of your architecture
 - **WCAG 2.1 AA accessible** — keyboard navigable, screen reader compatible, axe-core tested
 - **Mobile responsive** design with mobile-first approach
@@ -89,6 +91,7 @@ src/
 │   ├── storage/            # Storage adapter, migration, localStorage backend
 │   ├── import/             # CSV and JSON import
 │   ├── export/             # Markdown and CSV export
+│   ├── analysis/           # Risk against importance, duplication, renewals
 │   ├── report/             # Board report analysis
 │   ├── diagram/            # Mermaid diagram generation
 │   └── techfreedom/        # Risk scoring, known tools database, API

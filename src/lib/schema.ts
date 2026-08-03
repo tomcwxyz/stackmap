@@ -145,6 +145,13 @@ export const SystemSchema = z.object({
   techFreedomScore: TechFreedomScoreSchema.optional(),
   importance: z.number().min(1).max(10).optional(),
   isShadow: z.boolean().optional(),
+  seats: z.number().min(0).optional(),
+  // Plain calendar date, so a renewal does not shift around with time zones
+  renewalDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected a date in YYYY-MM-DD form')
+    .optional(),
+  noticePeriodDays: z.number().min(0).optional(),
 });
 
 export const DataCategorySchema = z.object({

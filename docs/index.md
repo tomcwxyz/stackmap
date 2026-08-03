@@ -32,7 +32,9 @@ Stackmap was built because I often find organisations struggle to do this in an 
 - **14 service templates** with auto-populated tools
 - **Import from CSV or JSON** — bring in existing data from spreadsheets or previous exports, with merge support
 - **TechFreedom risk assessment** — integrated wizard step scoring systems across jurisdiction, continuity, surveillance, lock-in, and cost exposure
-- **Cost estimation** with per-seat pricing and tier selection
+- **Cost estimation** with per-seat pricing, tier selection and estimates for systems you have not costed
+- **What to deal with first** — risk crossed with how much you depend on each system
+- **Contract renewals** with notice-period warnings and a calendar export
 - **Architecture and data flow diagrams** — visual maps with status indicators, personal data flags, and sensitivity colouring
 - **Systems inventory** — edit or delete any system after the wizard, in one searchable table
 - **Board report** — a printable summary for trustees and funders

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **What to deal with first** — your systems crossed against how much you depend on them and how risky they are, as four groups with "critical and exposed" first. Shown in the review, the board report and the Markdown export.
+- **Contract renewals** — record when a contract renews, how many licences you pay for and how much notice the supplier needs. The review and board report show what renews next and flag any notice deadline that has already passed, and you can download the dates as a calendar file.
 - **Your systems** — a new view listing every system with search, filters and sortable columns, where you can edit or delete anything without walking back through the wizard. This is also the only place several details can be set at all: status (active, planned, retiring, legacy), web address, notes, owner and importance.
 - **Score your own tools** — systems that are not in the known tools database can now be given TechFreedom risk scores by hand, instead of being left unassessed.
 - **Board report** — a printable one-page summary at `/view/report`: headline numbers, what needs attention, the systems you could not operate without, where the money goes, possible duplication and a risk summary. Print it or save it as a PDF for a trustee meeting.
@@ -28,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Duplication is now spotted across the whole map**, not one function at a time, so two CRMs in different departments are finally visible. Each group shows what the tools cost together and roughly what consolidating could free up.
+- **The cost total no longer stops at what you typed in** — systems with no cost recorded are priced from the known tools database where possible, shown separately from the recorded figure, with anything that still could not be priced called out.
 - Saving to the browser is debounced, so typing no longer rewrites the whole map on every keystroke.
 
 ### Internal

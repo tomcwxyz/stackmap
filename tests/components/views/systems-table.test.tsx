@@ -302,6 +302,26 @@ describe('SystemsTable', () => {
       );
     });
 
+    it('records contract details so renewals can be tracked', async () => {
+      const user = userEvent.setup();
+      render(<SystemsTable />);
+
+      await user.click(screen.getByRole('button', { name: /edit xero/i }));
+      await user.type(screen.getByLabelText(/licences/i), '12');
+      await user.type(screen.getByLabelText(/renews on/i), '2027-03-01');
+      await user.type(screen.getByLabelText(/notice period/i), '60');
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+      expect(updateSystemMock).toHaveBeenCalledWith(
+        'sys-1',
+        expect.objectContaining({
+          seats: 12,
+          renewalDate: '2027-03-01',
+          noticePeriodDays: 60,
+        }),
+      );
+    });
+
     it('will not save a system with no name', async () => {
       const user = userEvent.setup();
       render(<SystemsTable />);

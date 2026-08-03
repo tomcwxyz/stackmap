@@ -543,3 +543,56 @@ pages.
     The report describes what you entered. If systems have no cost recorded, the
     total will understate what you actually spend — the report says so where that
     applies.
+
+---
+
+## 17. Contracts and Renewals
+
+For each system you can record, from **Your systems**:
+
+- **Licences** — how many seats you pay for
+- **Renews on** — the date the contract next renews or auto-renews
+- **Notice period** — how many days of warning the supplier needs
+
+Once any renewal dates are set, the review step and the board report show a
+**What renews next** section: everything in date order, what each costs, and the
+last day you could give notice.
+
+### Notice deadlines
+
+If a contract renews on 1 October and the supplier needs 90 days' notice, the last
+useful day to act is 3 July. Once that day passes, the renewal is flagged in red
+and appears in the board report under things needing attention — the contract will
+roll over whether or not anyone intended it to.
+
+### Adding renewals to your calendar
+
+**Add to calendar** on the review step downloads an `.ics` file with one all-day
+event per renewal, including the notice deadline in the event description. Open it
+in Outlook, Google Calendar or Apple Calendar to import the dates.
+
+---
+
+## 18. What to Deal With First
+
+If risk assessment is switched on and you have scored importance, the review step
+and board report show your systems in four groups:
+
+- **Critical and exposed** — you depend on these and they carry real risk. Start here.
+- **Critical and solid** — you depend on these but they look sound. Keep them that way.
+- **Exposed but not critical** — risky tools you could live without. Often the easiest wins.
+- **Low priority** — neither critical nor especially risky.
+
+A system needs both an importance score and a risk score to appear. Anything missing
+one is counted underneath rather than being silently left out.
+
+### Duplication
+
+**Potential overlaps** compares systems across your whole map rather than one area
+at a time, so two CRMs in different departments show up as one finding. Where costs
+are recorded, it shows what the group costs together and roughly what moving to a
+single tool could free up — a crude figure that ignores migration effort, so treat
+it as the ceiling rather than a forecast.
+
+Grouping follows the system type you chose. If you want two tools compared, give
+them the same type.

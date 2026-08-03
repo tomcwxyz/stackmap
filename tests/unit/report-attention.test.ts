@@ -234,6 +234,93 @@ describe('findAttentionPoints', () => {
     expect(ids(arch)).not.toContain('uncosted-systems');
   });
 
+  describe('contract renewals', () => {
+    /** Far enough ahead that it never lands inside the 90-day window. */
+    function farFuture(): string {
+      const date = new Date();
+      date.setUTCFullYear(date.getUTCFullYear() + 2);
+      return date.toISOString().slice(0, 10);
+    }
+
+    function daysFromNow(days: number): string {
+      const date = new Date();
+      date.setUTCDate(date.getUTCDate() + days);
+      return date.toISOString().slice(0, 10);
+    }
+
+    it('flags a contract whose notice deadline has already passed', () => {
+      const arch = architecture({
+        systems: [
+          system({
+            id: 's1',
+            name: 'Salesforce',
+            ownerId: 'own-1',
+            cost: { amount: 1, period: 'annual', model: 'subscription' },
+            renewalDate: daysFromNow(20),
+            noticePeriodDays: 90,
+          }),
+        ],
+      });
+
+      const point = findAttentionPoints(arch).find((p) => p.id === 'notice-deadline-passed');
+      expect(point?.severity).toBe('high');
+      expect(point?.title).toMatch(/will auto-renew/i);
+      expect(point?.detail).toMatch(/Salesforce/);
+    });
+
+    it('flags contracts renewing inside 90 days', () => {
+      const arch = architecture({
+        systems: [
+          system({
+            id: 's1',
+            name: 'Xero',
+            ownerId: 'own-1',
+            cost: { amount: 1, period: 'annual', model: 'subscription' },
+            renewalDate: daysFromNow(30),
+          }),
+        ],
+      });
+
+      const point = findAttentionPoints(arch).find((p) => p.id === 'renewing-soon');
+      expect(point?.severity).toBe('medium');
+      expect(point?.detail).toMatch(/Xero/);
+    });
+
+    it('does not raise a renewal that is a long way off', () => {
+      const arch = architecture({
+        systems: [
+          system({
+            id: 's1',
+            name: 'Xero',
+            ownerId: 'own-1',
+            cost: { amount: 1, period: 'annual', model: 'subscription' },
+            renewalDate: farFuture(),
+          }),
+        ],
+      });
+
+      expect(ids(arch)).not.toContain('renewing-soon');
+    });
+
+    it('raises a missed deadline once, not also as renewing soon', () => {
+      const arch = architecture({
+        systems: [
+          system({
+            id: 's1',
+            name: 'Salesforce',
+            ownerId: 'own-1',
+            cost: { amount: 1, period: 'annual', model: 'subscription' },
+            renewalDate: daysFromNow(20),
+            noticePeriodDays: 90,
+          }),
+        ],
+      });
+
+      expect(ids(arch)).toContain('notice-deadline-passed');
+      expect(ids(arch)).not.toContain('renewing-soon');
+    });
+  });
+
   it('puts the most serious findings first', () => {
     const arch = architecture({
       systems: [

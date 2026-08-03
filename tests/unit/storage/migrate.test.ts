@@ -170,3 +170,36 @@ describe('migrateArchitecture', () => {
     });
   });
 });
+
+describe('fields added for contract tracking', () => {
+  it('keeps renewal details on a system that has them', () => {
+    const raw = validRaw() as { systems: Record<string, unknown>[] };
+    raw.systems[0].seats = 12;
+    raw.systems[0].renewalDate = '2027-03-01';
+    raw.systems[0].noticePeriodDays = 60;
+
+    const arch = migrateArchitecture(raw).architecture;
+
+    expect(arch!.systems[0].seats).toBe(12);
+    expect(arch!.systems[0].renewalDate).toBe('2027-03-01');
+    expect(arch!.systems[0].noticePeriodDays).toBe(60);
+  });
+
+  it('loads a map written before renewal tracking existed', () => {
+    const arch = migrateArchitecture(validRaw()).architecture;
+
+    expect(arch!.systems[0].renewalDate).toBeUndefined();
+    expect(arch!.systems).toHaveLength(1);
+  });
+
+  it('clears a renewal date nothing can read, without losing the system', () => {
+    const raw = validRaw() as { systems: Record<string, unknown>[] };
+    raw.systems[0].renewalDate = 'next March';
+
+    const result = migrateArchitecture(raw);
+
+    expect(result.droppedCount).toBe(0);
+    expect(result.architecture!.systems).toHaveLength(1);
+    expect(result.architecture!.systems[0].renewalDate).toBeUndefined();
+  });
+});

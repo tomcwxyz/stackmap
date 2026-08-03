@@ -31,6 +31,10 @@ function asString(value: unknown, fallback: string): string {
   return typeof value === 'string' && value.length > 0 ? value : fallback;
 }
 
+function isCalendarDate(value: unknown): boolean {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
 /**
  * Validate each entity in a collection, keeping the ones that parse.
  *
@@ -102,6 +106,8 @@ export function migrateArchitecture(raw: unknown): MigrationResult {
         status: sys.status ?? 'active',
         functionIds: asArray(sys.functionIds),
         serviceIds: asArray(sys.serviceIds),
+        // A date nothing can read costs the user the field, not the system
+        renewalDate: isCalendarDate(sys.renewalDate) ? sys.renewalDate : undefined,
       })),
     SystemSchema,
   );

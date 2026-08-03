@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useArchitecture } from '@/hooks/useArchitecture';
 import { findAttentionPoints } from '@/lib/report/attention';
 import { RiskImportanceGrid } from '@/components/analysis/risk-importance-grid';
+import { RenewalTimeline } from '@/components/analysis/renewal-timeline';
 import { buildRiskImportanceMatrix } from '@/lib/analysis/risk-importance';
 import { annualiseCost, calculateCostSummary, formatCurrency } from '@/lib/cost-analysis';
 import { findDuplication } from '@/lib/analysis/duplication';
@@ -239,6 +240,16 @@ export function BoardReport() {
                   ))}
               </tbody>
             </table>
+          </section>
+        )}
+
+        {/* Renewals */}
+        {systems.some((s) => s.renewalDate) && (
+          <section className="break-inside-avoid" aria-labelledby="report-renewals">
+            <h2 id="report-renewals" className="text-xl font-display font-bold text-primary-900 mb-3">
+              What renews next
+            </h2>
+            <RenewalTimeline systems={systems} />
           </section>
         )}
 

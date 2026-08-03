@@ -12,6 +12,8 @@ import { generateMarkdownExport } from '@/lib/export/markdown';
 import { generateCsvExport } from '@/lib/export/csv';
 import { BullseyeDiagram } from './bullseye-diagram';
 import { RiskImportanceGrid } from '@/components/analysis/risk-importance-grid';
+import { RenewalTimeline } from '@/components/analysis/renewal-timeline';
+import { generateRenewalsIcs } from '@/lib/analysis/renewals';
 import { buildRiskImportanceMatrix } from '@/lib/analysis/risk-importance';
 import { getImportanceTier } from '@/lib/importance';
 
@@ -80,6 +82,19 @@ export function ReviewSummary() {
     const a = document.createElement('a');
     a.href = url;
     a.download = `stackmap-${arch.organisation.name || 'export'}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [getArchitecture]);
+
+  const handleExportRenewals = useCallback(() => {
+    const arch = getArchitecture();
+    if (!arch) return;
+    const ics = generateRenewalsIcs(arch.systems, arch.organisation.name);
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `stackmap-renewals-${arch.organisation.name || 'export'}.ics`;
     a.click();
     URL.revokeObjectURL(url);
   }, [getArchitecture]);
@@ -645,6 +660,33 @@ export function ReviewSummary() {
               );
             })}
           </ul>
+        </section>
+      )}
+
+      {/* Renewals */}
+      {systems.some((s) => s.renewalDate) && (
+        <section
+          className="bg-surface-100 border border-surface-300 rounded-lg p-4 sm:p-6 space-y-3"
+          data-testid="renewals-section"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="font-display font-semibold text-primary-900 text-lg">
+                What renews next
+              </h2>
+              <p className="text-sm text-primary-600">
+                Contract dates you have recorded, soonest first.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleExportRenewals}
+              className="btn-secondary text-sm whitespace-nowrap"
+            >
+              Add to calendar
+            </button>
+          </div>
+          <RenewalTimeline systems={systems} />
         </section>
       )}
 

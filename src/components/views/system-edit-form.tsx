@@ -81,6 +81,9 @@ interface Draft {
   importance: string;
   isShadow: boolean;
   notes: string;
+  seats: string;
+  renewalDate: string;
+  noticePeriodDays: string;
   techFreedomScore?: TechFreedomScore;
 }
 
@@ -99,6 +102,9 @@ function toDraft(system: System): Draft {
     importance: system.importance != null ? String(system.importance) : '',
     isShadow: system.isShadow === true,
     notes: system.notes ?? '',
+    seats: system.seats != null ? String(system.seats) : '',
+    renewalDate: system.renewalDate ?? '',
+    noticePeriodDays: system.noticePeriodDays != null ? String(system.noticePeriodDays) : '',
     techFreedomScore: system.techFreedomScore,
   };
 }
@@ -106,6 +112,8 @@ function toDraft(system: System): Draft {
 function toUpdates(draft: Draft): Partial<Omit<System, 'id'>> {
   const amount = parseFloat(draft.costAmount);
   const importance = parseInt(draft.importance, 10);
+  const seats = parseInt(draft.seats, 10);
+  const notice = parseInt(draft.noticePeriodDays, 10);
 
   return {
     name: draft.name.trim(),
@@ -122,6 +130,9 @@ function toUpdates(draft: Draft): Partial<Omit<System, 'id'>> {
     importance: !isNaN(importance) ? importance : undefined,
     isShadow: draft.isShadow || undefined,
     notes: draft.notes.trim() || undefined,
+    seats: !isNaN(seats) && seats >= 0 ? seats : undefined,
+    renewalDate: draft.renewalDate || undefined,
+    noticePeriodDays: !isNaN(notice) && notice >= 0 ? notice : undefined,
     techFreedomScore: draft.techFreedomScore,
   };
 }
@@ -287,6 +298,35 @@ export function SystemEditForm({
             </option>
           ))}
         </Select>
+
+        <Input
+          id={`sys-seats-${system.id}`}
+          label="Licences"
+          type="number"
+          min={0}
+          value={draft.seats}
+          onChange={(e) => update('seats', e.target.value)}
+          helperText="How many you pay for"
+        />
+
+        <Input
+          id={`sys-renewal-${system.id}`}
+          label="Renews on"
+          type="date"
+          value={draft.renewalDate}
+          onChange={(e) => update('renewalDate', e.target.value)}
+          helperText="When the contract next renews"
+        />
+
+        <Input
+          id={`sys-notice-${system.id}`}
+          label="Notice period"
+          type="number"
+          min={0}
+          value={draft.noticePeriodDays}
+          onChange={(e) => update('noticePeriodDays', e.target.value)}
+          helperText="Days of warning the supplier needs"
+        />
 
         <div className="flex items-end pb-2">
           <Checkbox

@@ -1,5 +1,6 @@
 import type { Architecture, System } from '@/lib/types';
 import { getImportanceTier } from '@/lib/importance';
+import { findRenewals } from '@/lib/analysis/renewals';
 
 export type AttentionSeverity = 'high' | 'medium';
 
@@ -99,6 +100,28 @@ export function findAttentionPoints(arch: Architecture): AttentionPoint[] {
       severity: 'high',
       title: `${personalUnowned.length === 1 ? 'A system holding personal data has' : `${personalUnowned.length} systems holding personal data have`} no named owner`,
       detail: list(personalUnowned.map((s) => s.name)),
+    });
+  }
+
+  // Contracts that auto-renew before anyone can act
+  const { upcoming } = findRenewals(systems);
+  const missedNotice = upcoming.filter((r) => r.noticeDeadlinePassed);
+  if (missedNotice.length > 0) {
+    points.push({
+      id: 'notice-deadline-passed',
+      severity: 'high',
+      title: `${missedNotice.length === 1 ? 'A contract will auto-renew' : `${missedNotice.length} contracts will auto-renew`} — the notice deadline has passed`,
+      detail: list(missedNotice.map((r) => `${r.system.name} (renews ${r.date})`)),
+    });
+  }
+
+  const renewingSoon = upcoming.filter((r) => !r.noticeDeadlinePassed && r.daysAway <= 90);
+  if (renewingSoon.length > 0) {
+    points.push({
+      id: 'renewing-soon',
+      severity: 'medium',
+      title: `${renewingSoon.length === 1 ? 'One contract renews' : `${renewingSoon.length} contracts renew`} in the next 90 days`,
+      detail: list(renewingSoon.map((r) => `${r.system.name} (${r.date})`)),
     });
   }
 

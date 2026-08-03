@@ -93,6 +93,12 @@ export interface System {
   techFreedomScore?: TechFreedomScore;
   importance?: number;
   isShadow?: boolean;
+  /** Licences paid for, where the tool is charged per seat. */
+  seats?: number;
+  /** When the contract next renews or auto-renews, as YYYY-MM-DD. */
+  renewalDate?: string;
+  /** How much warning the supplier needs before you can leave, in days. */
+  noticePeriodDays?: number;
 }
 
 export interface DataCategory {
