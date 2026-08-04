@@ -24,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Imported spend now replaces the figures Stackmap guessed** — costs record where they came from, so real money from your bank replaces an estimate and refreshes an earlier import, but never overwrites a figure you typed in yourself. Previously this was inferred from the pricing model, which meant wizard estimates were treated as your own and left in place, while a figure you typed and left as "unknown" was overwritten.
+- **Two payment streams to one supplier no longer lose half the money** — payees that clean differently but name the same tool are combined before being added, instead of the first creating the system and the second quietly doing nothing.
+- **The Spend format is only offered where it works** — opening the import dialog from the wizard's first page offered it without anywhere to send the result, so confirming a selection did nothing.
 - **Your map survives a bad save** — if the browser refuses to store your map (usually because storage is full), Stackmap now tells you and prompts you to export, instead of failing silently.
 - **Maps written by older versions load properly** — stored maps are checked and brought up to date on load, filling in fields that did not exist when the map was saved.
 - **Damaged maps are no longer lost** — a map that cannot be read is kept as a backup in your browser rather than deleted, and individual entries that cannot be repaired are dropped with a count shown rather than taking the whole map with them.

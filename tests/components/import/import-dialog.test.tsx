@@ -260,7 +260,15 @@ describe('ImportDialog', () => {
 
   describe('merge mode', () => {
     it('offers only the formats that add to an existing map', () => {
-      render(<ImportDialog open mode="merge" onClose={vi.fn()} onImport={vi.fn()} />);
+      render(
+        <ImportDialog
+          open
+          mode="merge"
+          onClose={vi.fn()}
+          onImport={vi.fn()}
+          onImportSpend={vi.fn()}
+        />,
+      );
 
       // Replacing everything from a JSON export is not on offer mid-map
       expect(screen.queryByText(/full architecture/i)).not.toBeInTheDocument();
@@ -347,14 +355,18 @@ describe('ImportDialog', () => {
 
     it('starts over when the dialog is closed and reopened', async () => {
       const user = userEvent.setup();
-      const { rerender } = render(
-        <ImportDialog open mode="merge" onClose={vi.fn()} onImport={vi.fn()} />,
-      );
+      const props = {
+        mode: 'merge' as const,
+        onClose: vi.fn(),
+        onImport: vi.fn(),
+        onImportSpend: vi.fn(),
+      };
+      const { rerender } = render(<ImportDialog open {...props} />);
       await user.click(screen.getByText(/systems list/i));
       expect(screen.getByText(/select a .csv file/i)).toBeInTheDocument();
 
-      rerender(<ImportDialog open={false} mode="merge" onClose={vi.fn()} onImport={vi.fn()} />);
-      rerender(<ImportDialog open mode="merge" onClose={vi.fn()} onImport={vi.fn()} />);
+      rerender(<ImportDialog open={false} {...props} />);
+      rerender(<ImportDialog open {...props} />);
 
       // Back at the start, with nothing carried over from last time
       expect(screen.getByText(/accounting or bank export/i)).toBeInTheDocument();
@@ -407,10 +419,20 @@ describe('ImportDialog', () => {
 
     it('reassures the user the file stays in their browser', async () => {
       const user = userEvent.setup();
-      render(<ImportDialog open onClose={vi.fn()} onImport={vi.fn()} />);
+      render(<ImportDialog open onClose={vi.fn()} onImport={vi.fn()} onImportSpend={vi.fn()} />);
       await user.click(screen.getByText(/accounting or bank export/i));
 
       expect(screen.getByText(/never uploaded/i)).toBeInTheDocument();
+    });
+
+    it('is not offered where nothing would receive it', () => {
+      // Spend adds systems rather than replacing the map, so it needs its own
+      // handler. Offered without one, choosing it led to a dead end: the
+      // preview accepted a selection and then did nothing.
+      render(<ImportDialog open onClose={vi.fn()} onImport={vi.fn()} />);
+
+      expect(screen.queryByText(/accounting or bank export/i)).not.toBeInTheDocument();
+      expect(screen.getByText(/systems list/i)).toBeInTheDocument();
     });
 
     it('shows what it recognised', async () => {

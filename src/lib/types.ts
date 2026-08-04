@@ -89,6 +89,16 @@ export interface System {
     amount: number;
     period: 'monthly' | 'annual';
     model: 'subscription' | 'perpetual' | 'free' | 'unknown';
+    /**
+     * Where the figure came from, so one source does not quietly overwrite a
+     * better one. The cost model is not provenance: a guessed subscription
+     * price and a typed one both read as `subscription`.
+     *
+     * Absent on maps written before this existed. Those are treated as though
+     * a person entered them, because destroying a deliberate figure is worse
+     * than leaving a stale estimate in place.
+     */
+    source?: 'user' | 'estimate' | 'spend';
   };
   techFreedomScore?: TechFreedomScore;
   importance?: number;

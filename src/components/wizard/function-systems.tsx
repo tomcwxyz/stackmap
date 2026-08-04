@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useArchitecture } from '@/hooks/useArchitecture';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import type { SystemType, StandardFunction } from '@/lib/types';
+import type { System, SystemType, StandardFunction } from '@/lib/types';
 import type { TechFreedomScore, KnownTool } from '@/lib/techfreedom/types';
 import { findMatchingTool } from '@/lib/techfreedom/match';
 import { KNOWN_TOOLS } from '@/lib/techfreedom/tools';
@@ -51,11 +51,8 @@ interface SystemFormData {
   costModel: CostModel;
 }
 
-interface SystemCost {
-  amount: number;
-  period: CostPeriod;
-  model: CostModel;
-}
+/** The shape stored on a system, so the two cannot drift apart. */
+type SystemCost = NonNullable<System['cost']>;
 
 interface SystemEntry {
   id: string;
@@ -239,6 +236,7 @@ export function FunctionSystems() {
           amount: estimate.annualTotal,
           period: 'annual',
           model: estimate.annualTotal === 0 ? 'free' : 'subscription',
+          source: 'estimate',
         };
       }
 
@@ -347,6 +345,7 @@ export function FunctionSystems() {
         amount: costAmount,
         period: formData.costPeriod,
         model: formData.costModel,
+        source: 'user',
       };
     }
 
@@ -443,6 +442,7 @@ export function FunctionSystems() {
           amount: parsed,
           period: period as 'monthly' | 'annual',
           model: parsed === 0 ? ('free' as const) : (model as 'subscription' | 'perpetual' | 'free' | 'unknown'),
+          source: 'user',
         };
       }
 

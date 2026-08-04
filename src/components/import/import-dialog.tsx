@@ -215,6 +215,10 @@ function ImportDialogContent({
           {step === 'format' && (
             <FormatStep
               mode={mode}
+              // Spend adds systems to the map rather than replacing it, so it
+              // needs its own handler. Offering it without one is a dead end:
+              // the preview would accept a choice and then do nothing.
+              offerSpend={Boolean(onImportSpend)}
               onSelect={handleFormatSelect}
               firstRef={firstFocusableRef}
             />
@@ -312,11 +316,12 @@ export function ImportDialog({ open, ...rest }: ImportDialogProps) {
 
 interface FormatStepProps {
   mode: 'replace' | 'merge';
+  offerSpend: boolean;
   onSelect: (fmt: ImportFormat) => void;
   firstRef: React.RefObject<HTMLButtonElement | null>;
 }
 
-function FormatStep({ mode, onSelect, firstRef }: FormatStepProps) {
+function FormatStep({ mode, offerSpend, onSelect, firstRef }: FormatStepProps) {
   // Replacing the whole map from a JSON export only makes sense when starting
   // out; part-way through, everything on offer adds to what is already there.
   const offerJson = mode === 'replace';
@@ -359,21 +364,23 @@ function FormatStep({ mode, onSelect, firstRef }: FormatStepProps) {
         </span>
       </button>
 
-      <button
-        type="button"
-        onClick={() => onSelect('spend')}
-        className="col-span-2 rounded-lg border border-surface-300 p-4 text-left transition-colors hover:border-primary-400 hover:bg-primary-50 focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
-      >
-        <span className="block font-display font-semibold text-primary-900">
-          Spend
-        </span>
-        <span className="block text-sm text-primary-700">
-          Accounting or bank export
-        </span>
-        <span className="mt-1 block text-xs text-primary-500">
-          Find the tools you pay for, with what they actually cost
-        </span>
-      </button>
+      {offerSpend && (
+        <button
+          type="button"
+          onClick={() => onSelect('spend')}
+          className="col-span-2 rounded-lg border border-surface-300 p-4 text-left transition-colors hover:border-primary-400 hover:bg-primary-50 focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+        >
+          <span className="block font-display font-semibold text-primary-900">
+            Spend
+          </span>
+          <span className="block text-sm text-primary-700">
+            Accounting or bank export
+          </span>
+          <span className="mt-1 block text-xs text-primary-500">
+            Find the tools you pay for, with what they actually cost
+          </span>
+        </button>
+      )}
     </div>
   );
 }

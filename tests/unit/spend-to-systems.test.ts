@@ -73,6 +73,7 @@ describe('addSpendToArchitecture', () => {
       amount: 396,
       period: 'annual',
       model: 'subscription',
+      source: 'spend',
     });
   });
 
@@ -131,7 +132,7 @@ describe('addSpendToArchitecture', () => {
           system({
             id: 's1',
             name: 'Xero',
-            cost: { amount: 500, period: 'annual', model: 'subscription' },
+            cost: { amount: 500, period: 'annual', model: 'subscription', source: 'user' },
           }),
         ]),
       );
@@ -139,7 +140,41 @@ describe('addSpendToArchitecture', () => {
       expect(result.architecture.systems[0].cost?.amount).toBe(500);
     });
 
-    it('replaces a cost that was only ever a guess', () => {
+    it('replaces a cost Stackmap guessed, which is the point of the feature', () => {
+      const result = addSpendToArchitecture(
+        [match()],
+        architecture([
+          system({
+            id: 's1',
+            name: 'Xero',
+            // What the wizard writes for a tool it recognised: a guess that
+            // reads as a subscription, because most software is one
+            cost: { amount: 500, period: 'annual', model: 'subscription', source: 'estimate' },
+          }),
+        ]),
+      );
+
+      expect(result.architecture.systems[0].cost?.amount).toBe(396);
+    });
+
+    it('refreshes a figure an earlier import wrote', () => {
+      const result = addSpendToArchitecture(
+        [match({ estimatedAnnualCost: 420 })],
+        architecture([
+          system({
+            id: 's1',
+            name: 'Xero',
+            cost: { amount: 396, period: 'annual', model: 'subscription', source: 'spend' },
+          }),
+        ]),
+      );
+
+      expect(result.architecture.systems[0].cost?.amount).toBe(420);
+    });
+
+    it('leaves a cost with no recorded source alone', () => {
+      // Written before provenance was tracked, so it could be either. A stale
+      // estimate is a smaller harm than a destroyed decision.
       const result = addSpendToArchitecture(
         [match()],
         architecture([
@@ -151,7 +186,7 @@ describe('addSpendToArchitecture', () => {
         ]),
       );
 
-      expect(result.architecture.systems[0].cost?.amount).toBe(396);
+      expect(result.architecture.systems[0].cost?.amount).toBe(500);
     });
 
     it('matches regardless of case', () => {
@@ -161,6 +196,49 @@ describe('addSpendToArchitecture', () => {
       );
 
       expect(result.updated).toBe(1);
+    });
+  });
+
+  describe('two payee groups naming the same tool', () => {
+    // A statement can carry both `GOOGLE` and `GOOGLE *GSUITE`; they clean to
+    // different payees but are one subscription.
+    const twoStreams = [
+      match({ payee: 'XERO', originalPayee: 'XERO LIMITED', estimatedAnnualCost: 300, transactions: 10, totalAmount: 300 }),
+      match({ payee: 'XERO PAYROLL', originalPayee: 'XERO PAYROLL 4471', estimatedAnnualCost: 96, transactions: 12, totalAmount: 96 }),
+    ];
+
+    it('creates one system, not one plus a silent no-op', () => {
+      const result = addSpendToArchitecture(twoStreams, architecture());
+
+      expect(result.architecture.systems).toHaveLength(1);
+      expect(result.added).toBe(1);
+      expect(result.updated).toBe(0);
+    });
+
+    it('counts all the money, rather than losing the second stream', () => {
+      const result = addSpendToArchitecture(twoStreams, architecture());
+
+      expect(result.architecture.systems[0].cost?.amount).toBe(396);
+    });
+
+    it('names both descriptors, so a statement line can still be traced', () => {
+      const result = addSpendToArchitecture(twoStreams, architecture());
+
+      expect(result.architecture.systems[0].notes).toContain('XERO LIMITED');
+      expect(result.architecture.systems[0].notes).toContain('XERO PAYROLL 4471');
+      expect(result.architecture.systems[0].notes).toContain('22 payments');
+    });
+
+    it('keeps unrecognised payees apart, since only a tool makes them the same', () => {
+      const result = addSpendToArchitecture(
+        [
+          match({ payee: 'Plumber', originalPayee: 'A PLUMBER', tool: undefined }),
+          match({ payee: 'Electrician', originalPayee: 'AN ELECTRICIAN', tool: undefined }),
+        ],
+        architecture(),
+      );
+
+      expect(result.architecture.systems).toHaveLength(2);
     });
   });
 

@@ -37,11 +37,45 @@ export interface SpendImportResult {
 }
 
 /**
+ * Combine payee groups that name the same tool.
+ *
+ * `GOOGLE` and `GOOGLE *GSUITE` clean to different payees but resolve to the
+ * same known tool, and they are two streams of payments for one subscription.
+ * Left separate, the first would create the system and the second would find
+ * it already there, so half the money would go missing.
+ */
+function consolidate(matches: SpendMatch[]): SpendMatch[] {
+  const byTarget = new Map<string, SpendMatch>();
+
+  for (const match of matches) {
+    const key = matchKey(match.tool?.name ?? match.payee);
+    const current = byTarget.get(key);
+
+    if (!current) {
+      byTarget.set(key, { ...match });
+      continue;
+    }
+
+    byTarget.set(key, {
+      ...current,
+      estimatedAnnualCost: current.estimatedAnnualCost + match.estimatedAnnualCost,
+      totalAmount: current.totalAmount + match.totalAmount,
+      transactions: current.transactions + match.transactions,
+      // Both descriptors are worth keeping: the note is how a user works out
+      // which line on their statement a system came from.
+      originalPayee: `${current.originalPayee}, ${match.originalPayee}`,
+    });
+  }
+
+  return [...byTarget.values()];
+}
+
+/**
  * Turn confirmed spend into systems on the map.
  *
- * Cost here comes from what the organisation actually paid, so it replaces an
- * estimate where one was guessed — but never a figure the user typed in
- * themselves, which they had a reason for.
+ * Cost here comes from what the organisation actually paid, so it replaces a
+ * figure Stackmap guessed and refreshes one an earlier import wrote — but
+ * never one the user typed in themselves, which they had a reason for.
  */
 export function addSpendToArchitecture(
   matches: SpendMatch[],
@@ -53,20 +87,23 @@ export function addSpendToArchitecture(
   let added = 0;
   let updated = 0;
 
-  for (const match of matches) {
+  for (const match of consolidate(matches)) {
     const name = match.tool?.name ?? match.payee;
     const key = matchKey(name);
     const cost: System['cost'] = {
       amount: match.estimatedAnnualCost,
       period: 'annual',
       model: 'subscription',
+      source: 'spend',
     };
 
     const current = byName.get(key);
 
     if (current) {
-      // A cost the user entered by hand outranks anything derived here
-      if (!current.cost || current.cost.model === 'unknown') {
+      // Only a figure a person entered outranks real money leaving the bank.
+      // A cost with no recorded source predates provenance being tracked and
+      // is left alone: a stale estimate is better than a destroyed decision.
+      if (!current.cost || current.cost.source === 'estimate' || current.cost.source === 'spend') {
         current.cost = cost;
       }
       current.vendor ??= match.tool?.provider;

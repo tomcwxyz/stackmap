@@ -161,10 +161,13 @@ export const ServiceSchema = z.object({
   systemIds: z.array(z.string()).default([]),
 });
 
+export const CostSourceSchema = z.enum(['user', 'estimate', 'spend']);
+
 export const CostSchema = z.object({
   amount: z.number().min(0),
   period: CostPeriodSchema,
   model: CostModelSchema,
+  source: CostSourceSchema.optional(),
 });
 
 export const SystemSchema = z.object({
