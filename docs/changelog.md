@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Find your tools from what you pay for** — import a transaction export from your accounting software or online banking, and Stackmap picks out the payees that look like software, groups repeat payments, works out what each costs over a year and adds them to your map with real figures rather than estimates. Payees it does not recognise are listed separately for you to tick if they belong. The file is read in your browser and never uploaded.
 - **What to deal with first** — your systems crossed against how much you depend on them and how risky they are, as four groups with "critical and exposed" first. Shown in the review, the board report and the Markdown export.
 - **Contract renewals** — record when a contract renews, how many licences you pay for and how much notice the supplier needs. The review and board report show what renews next and flag any notice deadline that has already passed, and you can download the dates as a calendar file.
 - **Your systems** — a new view listing every system with search, filters and sortable columns, where you can edit or delete anything without walking back through the wizard. This is also the only place several details can be set at all: status (active, planned, retiring, legacy), web address, notes, owner and importance.

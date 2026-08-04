@@ -25,6 +25,7 @@ Stackmap is an open source tool that solves this problem. It provides a guided w
 - **TechFreedom risk assessment** (optional) — scores systems across 5 dimensions: jurisdiction, continuity, surveillance, lock-in, and cost exposure
 - **134 pre-scored known tools** with detailed pricing data for automatic cost estimation
 - **Smart cost estimation** with per-seat pricing, tier selection, and penetration rates
+- **Spend discovery** — import an accounting or bank export and find the tools you pay for, with what they actually cost
 - **Systems inventory** — search, filter, sort, edit and delete every system in one place after the wizard
 - **Board report** — a printable one-page summary for trustees and funders
 - **Live architecture map sidebar** showing your map as you build it

@@ -6,8 +6,8 @@ import { Stepper } from '@/components/wizard/stepper';
 import { LiveMapSidebar } from '@/components/wizard/live-map-sidebar';
 import { StorageNotice } from '@/components/layout/storage-notice';
 import { ImportDialog } from '@/components/import/import-dialog';
-import { mergeCsvIntoArchitecture } from '@/lib/import';
-import type { CsvSystemRow } from '@/lib/import';
+import { mergeCsvIntoArchitecture, addSpendToArchitecture } from '@/lib/import';
+import type { CsvSystemRow, SpendMatch } from '@/lib/import';
 import type { ReactNode } from 'react';
 
 function WizardHeader() {
@@ -18,6 +18,13 @@ function WizardHeader() {
     if (!architecture) return;
     const merged = mergeCsvIntoArchitecture(rows, architecture);
     replaceArchitecture(merged);
+    setShowImport(false);
+  }, [architecture, replaceArchitecture]);
+
+  const handleImportSpend = useCallback((matches: SpendMatch[]) => {
+    if (!architecture) return;
+    const { architecture: next } = addSpendToArchitecture(matches, architecture);
+    replaceArchitecture(next);
     setShowImport(false);
   }, [architecture, replaceArchitecture]);
 
@@ -46,6 +53,7 @@ function WizardHeader() {
           setShowImport(false);
         }}
         onMergeCsv={handleMergeCsv}
+        onImportSpend={handleImportSpend}
       />
     </>
   );

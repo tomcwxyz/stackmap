@@ -596,3 +596,42 @@ it as the ceiling rather than a forecast.
 
 Grouping follows the system type you chose. If you want two tools compared, give
 them the same type.
+
+---
+
+## 19. Finding Your Tools From What You Pay For
+
+Remembering every tool the organisation uses is the hardest part of mapping. Your
+bank statement already knows.
+
+Choose **Import**, then **Spend**, and upload a transaction export from your
+accounting software (Xero, QuickBooks) or online banking. Stackmap reads it in your
+browser — the file is never uploaded anywhere.
+
+### What it does
+
+- Finds the payee, amount and date columns, whatever they are called
+- Ignores money coming in, so grants and donations are not mistaken for costs
+- Cleans up payee text: `SP * CANVA I0F2K3` and `GOOGLE *GSUITE_yourorg` become
+  Canva and Google Workspace
+- Groups repeat payments to the same place, even when the reference code differs
+  every month
+- Works out how often you pay — monthly, quarterly, yearly — and what that comes to
+  over a year
+
+### What you confirm
+
+Nothing is added until you tick it. Tools Stackmap recognises are ticked for you.
+Payees it does not recognise are listed separately and left unticked — some will be
+software it has not heard of, most will be rent, salaries and suppliers.
+
+### Costs
+
+Systems added this way carry the cost you actually paid, which is better than any
+estimate. If a system is already on your map, importing spend fills in a cost that
+was missing but never overwrites a figure you typed in yourself.
+
+!!! tip
+    A full year of transactions gives the best results. A shorter export still
+    works, but Stackmap will not guess an annual figure from a fortnight of data —
+    it reports what was actually spent.
