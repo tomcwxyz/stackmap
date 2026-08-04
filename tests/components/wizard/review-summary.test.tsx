@@ -44,6 +44,8 @@ const fullArchitecture: Architecture = {
   owners: [
     { id: 'own-1', name: 'Sarah Jones', role: 'Finance Manager', isExternal: false },
   ],
+  externalParties: [],
+  dataFlows: [],
   metadata: { version: '1.0.0', exportedAt: '', stackmapVersion: '0.1.0', mappingPath: 'function_first' },
 };
 
@@ -61,11 +63,18 @@ const mockContextValue: ArchitectureContextValue = {
   updateSystem: vi.fn(),
   removeSystem: vi.fn(),
   addDataCategory: vi.fn().mockReturnValue(''),
+  updateDataCategory: vi.fn(),
   removeDataCategory: vi.fn(),
   addIntegration: vi.fn().mockReturnValue(''),
   removeIntegration: vi.fn(),
   addOwner: vi.fn().mockReturnValue(''),
   removeOwner: vi.fn(),
+  addExternalParty: vi.fn().mockReturnValue(''),
+  updateExternalParty: vi.fn(),
+  removeExternalParty: vi.fn(),
+  addDataFlow: vi.fn().mockReturnValue(''),
+  updateDataFlow: vi.fn(),
+  removeDataFlow: vi.fn(),
   save: saveMock,
   clear: vi.fn().mockResolvedValue(undefined),
   getArchitecture: vi.fn().mockReturnValue(fullArchitecture),

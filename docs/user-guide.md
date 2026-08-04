@@ -659,3 +659,78 @@ standard eight already fit.
 !!! note
     Sector functions are stored as custom functions, so exports and diagrams treat
     them exactly like any function you name yourself.
+
+---
+
+## 21. Who Sees Your Data
+
+The map stops at your own systems, but most of what a small organisation does
+with its data involves somebody else — reporting to a funder, filing with a
+regulator, handing a spreadsheet to an auditor. The data step asks about that
+once you have added at least one data category.
+
+### Adding someone you share with
+
+Give each one a name, say what they are to you (funder, regulator, auditor,
+delivery partner, supplier or other) and say roughly where they are: UK, Europe,
+outside Europe, or "don't know". Location matters because sending personal data
+out of the UK needs its own safeguards, and it is the one thing people forget.
+
+### Recording what goes to them
+
+For each thing you share, record:
+
+| Field | Why it is asked |
+|-------|-----------------|
+| **From which system** | Ties the sharing to something already on your map |
+| **To whom** | One of the parties you added above |
+| **How does it get there** | Their portal, email, a file, an API, post, or someone typing it in |
+| **How often** | Once a year, on a schedule, when asked, or continuously |
+| **Why do they need it** | The first thing a regulator asks |
+| **Which data** | The categories you have already listed |
+
+Removing a party also removes anything recorded as going to them, since sharing
+with somebody who is no longer on the list means nothing.
+
+---
+
+## 22. The Data Protection Record
+
+If any of your data categories is marked as containing personal data, Stackmap
+can draft a **record of processing activities** — the register UK GDPR Article 30
+requires most organisations to keep. Find it at `/view/ropa`, or from the
+"Data protection record" button at the end of the wizard.
+
+### What it fills in for you
+
+Most of Article 30 is already on your map. The record takes:
+
+- **What data you hold** — your personal-data categories
+- **Which systems hold it** — from the systems each category is assigned to
+- **How it is hosted** — cloud, on-premise or hybrid, as a rough note on security
+- **Who it goes to and why** — from the sharing you recorded in the data step
+- **Whether it leaves the UK** — flagged when any recipient is outside the UK
+
+### What it asks you for
+
+Three things the map cannot know, asked here rather than in the wizard so they
+only cost you time if you actually want the record:
+
+- **Who is it about** — people you support, staff, donors, and so on
+- **Lawful basis** — one of the six in Article 6: consent, contract, legal
+  obligation, vital interests, public task, or legitimate interests
+- **How long you keep it** — in plain words, such as "7 years after last contact"
+
+Each entry says what it is still missing rather than guessing, and the header
+counts how many are outstanding.
+
+### Exporting it
+
+**Export as CSV** produces a spreadsheet with Article 30 headings, which is how
+most organisations keep theirs, and what an ICO request will expect.
+
+!!! warning
+    This is a draft, not a finished record. Stackmap fills in what it can from
+    your map; the gaps, the wording and the accuracy are yours. Check every line
+    and have someone accountable sign it off. An Article 30 record is a legal
+    responsibility, not a tool's output.

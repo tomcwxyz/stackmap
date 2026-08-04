@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CheckboxGroup } from '@/components/ui/checkbox-group';
+import { SharingForm } from './sharing-form';
 
 const COMMON_CATEGORIES = [
   'Client Records',
@@ -288,6 +289,13 @@ export function DataForm() {
               Cancel
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Who sees this data, once there is any data to share */}
+      {added.length > 0 && (
+        <div className="pt-4 border-t border-surface-200">
+          <SharingForm />
         </div>
       )}
 

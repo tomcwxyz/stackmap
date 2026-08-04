@@ -78,6 +78,44 @@ export const CostModelSchema = z.enum(['subscription', 'perpetual', 'free', 'unk
 
 export const MappingPathSchema = z.enum(['function_first', 'service_first']);
 
+export const ExternalPartyTypeSchema = z.enum([
+  'funder',
+  'regulator',
+  'auditor',
+  'partner',
+  'supplier',
+  'other',
+]);
+
+export const PartyLocationSchema = z.enum(['uk', 'eea', 'rest_of_world', 'unknown']);
+
+export const DataFlowMethodSchema = z.enum([
+  'api',
+  'file_transfer',
+  'portal',
+  'email',
+  'post',
+  'manual',
+  'unknown',
+]);
+
+export const DataFlowFrequencySchema = z.enum([
+  'real_time',
+  'scheduled',
+  'on_demand',
+  'annual',
+  'unknown',
+]);
+
+export const LawfulBasisSchema = z.enum([
+  'consent',
+  'contract',
+  'legal_obligation',
+  'vital_interests',
+  'public_task',
+  'legitimate_interests',
+]);
+
 // ─── TechFreedom schemas ───
 
 export const TechFreedomScoreSchema = z.object({
@@ -160,6 +198,9 @@ export const DataCategorySchema = z.object({
   sensitivity: SensitivitySchema,
   containsPersonalData: z.boolean(),
   systemIds: z.array(z.string()),
+  subjects: z.string().optional(),
+  retention: z.string().optional(),
+  lawfulBasis: LawfulBasisSchema.optional(),
 });
 
 export const IntegrationSchema = z.object({
@@ -171,6 +212,25 @@ export const IntegrationSchema = z.object({
   frequency: FrequencySchema,
   description: z.string().optional(),
   reliability: ReliabilitySchema,
+});
+
+export const ExternalPartySchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  type: ExternalPartyTypeSchema,
+  description: z.string().optional(),
+  location: PartyLocationSchema.optional(),
+  contactInfo: z.string().optional(),
+});
+
+export const DataFlowSchema = z.object({
+  id: z.string().min(1),
+  systemId: z.string().min(1),
+  partyId: z.string().min(1),
+  dataCategoryIds: z.array(z.string()),
+  purpose: z.string().optional(),
+  method: DataFlowMethodSchema,
+  frequency: DataFlowFrequencySchema,
 });
 
 export const OwnerSchema = z.object({
@@ -197,6 +257,8 @@ export const ArchitectureSchema = z.object({
   dataCategories: z.array(DataCategorySchema),
   integrations: z.array(IntegrationSchema),
   owners: z.array(OwnerSchema),
+  externalParties: z.array(ExternalPartySchema),
+  dataFlows: z.array(DataFlowSchema),
   metadata: ArchitectureMetadataSchema,
 });
 

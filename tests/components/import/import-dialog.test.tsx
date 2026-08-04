@@ -59,6 +59,8 @@ function makeValidArchitecture(): Architecture {
     dataCategories: [],
     integrations: [],
     owners: [{ id: 'o1', name: 'Jane', isExternal: false }],
+    externalParties: [],
+    dataFlows: [],
     metadata: {
       version: '1',
       exportedAt: '2024-01-01T00:00:00Z',

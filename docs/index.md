@@ -39,6 +39,8 @@ Stackmap was built because I often find organisations struggle to do this in an 
 - **Architecture and data flow diagrams** — visual maps with status indicators, personal data flags, and sensitivity colouring
 - **Systems inventory** — edit or delete any system after the wizard, in one searchable table
 - **Board report** — a printable summary for trustees and funders
+- **Who sees your data** — funders, regulators, auditors and partners, and what goes to each
+- **Draft data protection record** — a starting point for the register UK GDPR Article 30 asks for, built from your map
 - **JSON, Markdown, CSV, SVG and PNG export** of your complete architecture
 - **Fully accessible** — WCAG 2.1 AA, keyboard navigable, screen reader compatible
 

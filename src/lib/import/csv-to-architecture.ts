@@ -85,6 +85,8 @@ export function csvRowsToArchitecture(
     dataCategories: [],
     integrations: [],
     owners: [],
+    externalParties: [],
+    dataFlows: [],
     metadata: {
       version: SCHEMA_VERSION,
       exportedAt: now,

@@ -34,6 +34,8 @@ function architecture(systems: System[] = []): Architecture {
     dataCategories: [],
     integrations: [],
     owners: [],
+    externalParties: [],
+    dataFlows: [],
     metadata: {
       version: '1.0.0',
       exportedAt: '2026-01-01',

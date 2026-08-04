@@ -3,7 +3,7 @@
 **Lightweight architecture mapping for social purpose organisations.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-720%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-1004%20passing-brightgreen.svg)]()
 [![WCAG 2.1 AA](https://img.shields.io/badge/accessibility-WCAG%202.1%20AA-blue.svg)]()
 
 ---
@@ -29,6 +29,8 @@ Stackmap is an open source tool that solves this problem. It provides a guided w
 - **Spend discovery** — import an accounting or bank export and find the tools you pay for, with what they actually cost
 - **Systems inventory** — search, filter, sort, edit and delete every system in one place after the wizard
 - **Board report** — a printable one-page summary for trustees and funders
+- **External sharing** — record the funders, regulators, auditors and partners your data goes to, what goes to each and why, and whether it leaves the UK
+- **Draft data protection record** — a starting point for the UK GDPR Article 30 register, built from the map and exportable as a spreadsheet
 - **Live architecture map sidebar** showing your map as you build it
 - **Mermaid diagram generation** for visual architecture maps
 - **Cost analysis** with estimates for uncosted systems, and duplication detection across the whole map
@@ -74,13 +76,13 @@ Then open [http://localhost:3000](http://localhost:3000) in your browser.
 src/
 ├── app/                    # Next.js App Router pages and layouts
 │   ├── wizard/             # Wizard flow (function-first and service-first paths)
-│   └── view/               # Systems inventory, diagram, board report, risk views
+│   └── view/               # Systems inventory, diagram, board report, data protection record
 ├── components/
 │   ├── ui/                 # Base UI components (Button, Card, Input, Select, etc.)
 │   ├── wizard/             # Wizard-specific components (steps, forms, sidebar)
 │   ├── techfreedom/        # Risk badge, radar chart, risk details
 │   ├── import/             # Import dialog and CSV preview
-│   ├── views/              # Systems table, diagram, board report, risk views
+│   ├── views/              # Systems table, diagram, board report, ROPA
 │   └── layout/             # Header, footer, storage notice
 ├── lib/
 │   ├── types.ts            # Core TypeScript type definitions
@@ -95,7 +97,7 @@ src/
 │   ├── import/             # CSV and JSON import
 │   ├── export/             # Markdown and CSV export
 │   ├── analysis/           # Risk against importance, duplication, renewals
-│   ├── report/             # Board report analysis
+│   ├── report/             # Board report and Article 30 record
 │   ├── diagram/            # Mermaid diagram generation
 │   └── techfreedom/        # Risk scoring, known tools database, API
 ├── hooks/                  # React hooks (useArchitecture, useStorageStatus, useAppConfig)
@@ -125,7 +127,7 @@ npm run typecheck     # TypeScript type checking
 
 ### Testing
 
-Stackmap follows a strict TDD workflow (red, green, refactor). The test suite currently includes **720 tests across 63 test files**.
+Stackmap follows a strict TDD workflow (red, green, refactor). The test suite currently includes **1004 tests across 80 test files**.
 
 Every component test includes an accessibility check using jest-axe:
 

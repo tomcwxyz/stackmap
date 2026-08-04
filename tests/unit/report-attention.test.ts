@@ -28,6 +28,8 @@ function architecture(overrides: Partial<Architecture> = {}): Architecture {
     dataCategories: [],
     integrations: [],
     owners: [{ id: 'own-1', name: 'Priya', isExternal: false }],
+    externalParties: [],
+    dataFlows: [],
     metadata: {
       version: '1.0.0',
       exportedAt: '',
