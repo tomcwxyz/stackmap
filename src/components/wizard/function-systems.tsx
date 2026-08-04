@@ -14,6 +14,7 @@ import { totalScore, riskLevel } from '@/lib/techfreedom/risk';
 import { estimateToolCost, DEFAULT_STAFF } from '@/lib/cost-estimates';
 import { getSuggestedSystems } from '@/lib/function-templates';
 import type { FunctionSystemSuggestion } from '@/lib/function-templates';
+import { getSectorSuggestions } from '@/lib/sector-functions';
 
 const SYSTEM_TYPES: { value: SystemType; label: string }[] = [
   { value: 'crm', label: 'CRM' },
@@ -187,7 +188,14 @@ export function FunctionSystems() {
 
   // Get suggestions for the active function, filtered by org type and size
   const suggestions = useMemo(() => {
-    if (!activeFunction || activeFunction.type === 'custom') return [];
+    if (!activeFunction) return [];
+
+    // Sector functions are stored as custom ones, so their suggestions are
+    // looked up by name rather than by function type
+    if (activeFunction.type === 'custom') {
+      return getSectorSuggestions(activeFunction.name, orgType);
+    }
+
     return getSuggestedSystems(
       activeFunction.type as StandardFunction,
       orgType,

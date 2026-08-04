@@ -28,7 +28,7 @@ Stackmap was built because I often find organisations struggle to do this in an 
 ## Key Features
 
 - **Two wizard paths** — start with organisational functions ("what we do") or services ("what we deliver")
-- **Smart suggestions** — system recommendations tailored to your organisation type and size
+- **Smart suggestions** — system recommendations tailored to your organisation type and size, including function sets for councils and businesses
 - **14 service templates** with auto-populated tools
 - **Find your tools from what you pay for** — import an accounting or bank export and Stackmap recognises the software in it
 - **Import from CSV or JSON** — bring in existing data from spreadsheets or previous exports, with merge support

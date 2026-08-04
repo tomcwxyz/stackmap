@@ -635,3 +635,27 @@ was missing but never overwrites a figure you typed in yourself.
     A full year of transactions gives the best results. A shorter export still
     works, but Stackmap will not guess an annual figure from a fortnight of data —
     it reports what was actually spent.
+
+---
+
+## 20. Councils and Businesses
+
+The eight standard functions are shaped around charities. If you set your
+organisation type to **Council** or **Private business**, the functions step
+offers a second set underneath, headed "Also common for organisations like yours".
+
+**Councils** are offered Revenues & Benefits, Planning & Building Control, Adult
+Social Care, Children's Services, Waste & Environment, Housing, Customer Services,
+and Elections & Registration — each with the systems councils typically run behind
+them, so the systems step has somewhere to start.
+
+**Businesses** are offered Sales, Customer Support, Product & Delivery, and Legal &
+Compliance.
+
+You can mix these with the standard functions freely, and add your own on top. If
+your organisation type is charity or social enterprise, nothing changes — the
+standard eight already fit.
+
+!!! note
+    Sector functions are stored as custom functions, so exports and diagrams treat
+    them exactly like any function you name yourself.

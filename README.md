@@ -20,6 +20,7 @@ Stackmap is an open source tool that solves this problem. It provides a guided w
 
 - **Two wizard paths** — function-first ("what does your org do?") or service-first ("what do you deliver?"), both leading to the same architecture map
 - **8 standard functions** with descriptions and typical systems (Finance, Governance, People, Fundraising, Communications, Service Delivery, Operations, Data & Reporting)
+- **Sector function sets** for councils (revenues and benefits, planning, social care, waste, housing and more) and for businesses
 - **14 service templates** with auto-populated tool suggestions (Advice sessions, Grant distribution, Youth programmes, and more)
 - **System suggestions** tailored by organisation type and size
 - **TechFreedom risk assessment** (optional) — scores systems across 5 dimensions: jurisdiction, continuity, surveillance, lock-in, and cost exposure
@@ -88,6 +89,7 @@ src/
 │   ├── functions.ts        # Standard functions data and helpers
 │   ├── function-templates.ts  # System suggestions per function/org type/size
 │   ├── service-templates.ts   # Service templates with suggested tools
+│   ├── sector-functions.ts    # Council and business function sets
 │   ├── cost-estimates.ts      # Cost estimation with tiered pricing
 │   ├── storage/            # Storage adapter, migration, localStorage backend
 │   ├── import/             # CSV and JSON import
