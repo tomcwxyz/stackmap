@@ -25,14 +25,19 @@ interface ErrorState {
   details?: string[];
 }
 
-export function ImportDialog({
-  open,
+/**
+ * The dialog's working state, mounted only while it is open.
+ *
+ * Keeping this in a child means closing the dialog unmounts it and the state
+ * goes with it, rather than an effect having to reset six fields by hand.
+ */
+function ImportDialogContent({
   mode = 'replace',
   onClose,
   onImport,
   onMergeCsv,
   existingArchitecture,
-}: ImportDialogProps) {
+}: Omit<ImportDialogProps, 'open'>) {
   const isMerge = mode === 'merge';
   const [step, setStep] = useState<ImportStep>(isMerge ? 'file' : 'format');
   const [format, setFormat] = useState<ImportFormat>(isMerge ? 'csv' : 'json');
@@ -44,28 +49,13 @@ export function ImportDialog({
   const dialogRef = useRef<HTMLDivElement>(null);
   const firstFocusableRef = useRef<HTMLButtonElement>(null);
 
-  // Reset state when dialog closes
+  // Focus the first interactive element on open and whenever the step changes
   useEffect(() => {
-    if (!open) {
-      setStep(isMerge ? 'file' : 'format');
-      setFormat(isMerge ? 'csv' : 'json');
-      setValidatedArch(null);
-      setCsvRows([]);
-      setCsvWarnings([]);
-      setError(null);
-    }
-  }, [open, isMerge]);
-
-  // Focus first interactive element when dialog opens or step changes
-  useEffect(() => {
-    if (open && firstFocusableRef.current) {
-      firstFocusableRef.current.focus();
-    }
-  }, [open, step]);
+    firstFocusableRef.current?.focus();
+  }, [step]);
 
   // Escape key handler
   useEffect(() => {
-    if (!open) return;
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         onClose();
@@ -73,11 +63,11 @@ export function ImportDialog({
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [open, onClose]);
+  }, [onClose]);
 
   // Focus trap
   useEffect(() => {
-    if (!open || !dialogRef.current) return;
+    if (!dialogRef.current) return;
 
     function handleTab(e: KeyboardEvent) {
       if (e.key !== 'Tab' || !dialogRef.current) return;
@@ -101,7 +91,7 @@ export function ImportDialog({
 
     document.addEventListener('keydown', handleTab);
     return () => document.removeEventListener('keydown', handleTab);
-  }, [open, step]);
+  }, [step]);
 
   const handleFormatSelect = useCallback((fmt: ImportFormat) => {
     setFormat(fmt);
@@ -158,8 +148,6 @@ export function ImportDialog({
       onImport(validatedArch);
     }
   }, [validatedArch, onImport]);
-
-  if (!open) return null;
 
   const dialogTitle = 'Import data';
 
@@ -263,6 +251,11 @@ export function ImportDialog({
       </div>
     </>
   );
+}
+
+export function ImportDialog({ open, ...rest }: ImportDialogProps) {
+  if (!open) return null;
+  return <ImportDialogContent {...rest} />;
 }
 
 // ─── Sub-steps ───

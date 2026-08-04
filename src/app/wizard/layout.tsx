@@ -51,6 +51,28 @@ function WizardHeader() {
   );
 }
 
+/**
+ * Holds the step back until the stored map has been read.
+ *
+ * Every step seeds its form state from the architecture on first render. The
+ * architecture arrives asynchronously, so a step mounted before the load
+ * finished seeded itself from nothing and showed an empty form over a map that
+ * was there all along — most visibly after a reload.
+ */
+function WizardStep({ children }: { children: ReactNode }) {
+  const { isLoading } = useArchitecture();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12" role="status">
+        <p className="text-primary-600">Loading your map...</p>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+
 export default function WizardLayout({ children }: { children: ReactNode }) {
   return (
     <ArchitectureProvider>
@@ -58,7 +80,7 @@ export default function WizardLayout({ children }: { children: ReactNode }) {
         <WizardHeader />
         <StorageNotice />
         <main className="max-w-3xl mx-auto px-4 py-8 sm:py-12">
-          {children}
+          <WizardStep>{children}</WizardStep>
         </main>
         <LiveMapSidebar />
       </div>

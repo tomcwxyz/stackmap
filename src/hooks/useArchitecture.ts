@@ -201,18 +201,34 @@ export function ArchitectureProvider({
     return () => clearTimeout(timer);
   }, [architecture, isLoading, persist]);
 
-  // Never leave a debounced change unwritten when the provider goes away.
-  useEffect(() => {
-    return () => {
-      const pending = pendingSaveRef.current;
-      if (pending) {
-        pendingSaveRef.current = null;
-        void storageAdapter.save(pending).catch(() => {
-          // Nothing can be shown at this point — the tree is unmounting.
-        });
-      }
-    };
+  const flushPendingSave = useCallback(() => {
+    const pending = pendingSaveRef.current;
+    if (!pending) return;
+    pendingSaveRef.current = null;
+    void storageAdapter.save(pending).catch(() => {
+      // Nothing can be shown at this point — the page or tree is going away.
+    });
   }, [storageAdapter]);
+
+  // Never leave a debounced change unwritten when the provider goes away.
+  useEffect(() => flushPendingSave, [flushPendingSave]);
+
+  // A reload or a closed tab does not unmount the tree, so the debounce has to
+  // be flushed against the page going away as well. pagehide and a hidden
+  // document are the two signals that fire reliably, including on mobile.
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'hidden') flushPendingSave();
+    }
+
+    window.addEventListener('pagehide', flushPendingSave);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('pagehide', flushPendingSave);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [flushPendingSave]);
 
   // Generic updater that bumps organisation.updatedAt
   const updateArch = useCallback(

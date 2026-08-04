@@ -198,7 +198,6 @@ export default function PathSelectorPage() {
       <ul
         className={`space-y-4 list-none p-0 m-0 ${!orgHasName ? 'opacity-50 pointer-events-none' : ''}`}
         aria-label="Mapping path options"
-        aria-disabled={!orgHasName}
       >
         {/* Recommended path */}
         <li>

@@ -26,6 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Diagram labels cannot inject markup** — system and function names taken from imported files are stripped of angle brackets, and diagrams now render with strict security settings.
 - **Functions with the same name get their own diagram groups** instead of being merged together.
 - **Version numbers agree** — exported and stored maps now carry a single, correct version rather than three different ones.
+- **A step no longer looks empty after a reload** — wizard steps read your saved map before drawing their forms, instead of drawing an empty one over data that was already there.
+- **Clicking "Add system" works first time** — showing the estimated cost when you left the name field used to nudge the button out from under the pointer, so the click missed.
+- **A change made just before closing the tab is still saved** — pending writes are flushed when the page goes away, not only when the app closes normally.
 - **Importing the same spreadsheet twice no longer doubles your map** — rows are matched to systems you already have by name and update them instead, filling in blanks without overwriting anything you typed. The preview says how many rows are new and how many will be updated.
 
 ### Changed
@@ -39,6 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ESLint configuration added, so `npm run lint` runs; a CI workflow now runs lint, typecheck and tests on every push and pull request.
 - Removed the unused `sql.js` dependency.
 - Diagram output is now checked against the real Mermaid parser in tests.
+- End-to-end tests cover the wizard in a real browser: full traversal, revisiting a step, reloading mid-flow, editing from the inventory and clearing the map. They run in CI.
+- Lint runs with warnings treated as errors; the effect-related warnings that were previously downgraded have been fixed at source, and app config now uses `useSyncExternalStore` (which also keeps two open tabs in step).
 
 ## [0.3.0] - 2026-04-01
 

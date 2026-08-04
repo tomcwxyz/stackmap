@@ -847,11 +847,16 @@ export function FunctionSystems() {
                   ))}
                 </Select>
               </div>
-              {costBreakdown && formData.costAmount && (
-                <p className="text-xs text-primary-500">
-                  {costBreakdown}
-                </p>
-              )}
+              {/*
+                Space is reserved whether or not there is a breakdown to show.
+                This line appears when the name field loses focus, and if that
+                grew the form it pushed the Add system button out from under
+                the pointer between mousedown and mouseup — so clicking Add
+                straight after typing a recognised tool name did nothing.
+              */}
+              <p className="text-xs text-primary-500 min-h-[1rem]">
+                {costBreakdown && formData.costAmount ? costBreakdown : ' '}
+              </p>
             </div>
 
             <button

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useArchitecture } from '@/hooks/useArchitecture';
@@ -82,7 +82,7 @@ export function IntegrationMatrix() {
     }));
   });
 
-  const systems = architecture?.systems ?? [];
+  const systems = useMemo(() => architecture?.systems ?? [], [architecture]);
 
   const updateField = useCallback(
     <K extends keyof IntegrationDraft>(field: K, value: IntegrationDraft[K]) => {

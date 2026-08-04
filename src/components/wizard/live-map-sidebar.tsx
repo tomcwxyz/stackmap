@@ -36,7 +36,6 @@ export function LiveMapSidebar() {
   const [open, setOpen] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const [pulse, setPulse] = useState(false);
-  const prevCountRef = useRef(0);
 
   // Compute entity count for pulse animation
   const entityCount = architecture
@@ -46,15 +45,21 @@ export function LiveMapSidebar() {
       architecture.owners.length
     : 0;
 
-  // Pulse the tab when architecture changes
+  // Pulse the tab when the map grows. Started during render rather than in an
+  // effect — this is state adjusting to a changed value, not a side effect, and
+  // an effect here would render once before the pulse appeared.
+  const [previousCount, setPreviousCount] = useState(entityCount);
+  if (entityCount !== previousCount) {
+    setPreviousCount(entityCount);
+    if (previousCount !== 0) setPulse(true);
+  }
+
+  // Stop pulsing once the animation has had time to play
   useEffect(() => {
-    if (entityCount !== prevCountRef.current && prevCountRef.current !== 0) {
-      setPulse(true);
-      const timer = setTimeout(() => setPulse(false), 600);
-      return () => clearTimeout(timer);
-    }
-    prevCountRef.current = entityCount;
-  }, [entityCount]);
+    if (!pulse) return;
+    const timer = setTimeout(() => setPulse(false), 600);
+    return () => clearTimeout(timer);
+  }, [pulse]);
 
   // Focus close button when panel opens
   useEffect(() => {

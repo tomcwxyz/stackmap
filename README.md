@@ -100,7 +100,8 @@ src/
 
 tests/
 ├── unit/                   # Unit tests for lib/ and hooks
-└── components/             # Component tests with accessibility checks
+├── components/             # Component tests with accessibility checks
+└── e2e/                    # Playwright end-to-end tests
 ```
 
 ## Development
@@ -112,6 +113,7 @@ npm run dev           # Start development server
 npm run build         # Production build
 npm run start         # Start production server
 npm run test          # Run unit + component tests
+npm run test:e2e      # Run end-to-end tests (Playwright)
 npm run test:watch    # Run tests in watch mode
 npm run test:coverage # Run tests with coverage report
 npm run lint          # ESLint (flat config in eslint.config.mjs)
@@ -143,7 +145,7 @@ it('has no accessibility violations', async () => {
 
 Before any change is considered complete:
 
-1. `npm run lint` passes
+1. `npm run lint` passes (warnings are errors)
 2. `npm run typecheck` passes
 3. `npm run test` passes
 4. Manual keyboard navigation works
