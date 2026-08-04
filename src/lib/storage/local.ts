@@ -1,23 +1,58 @@
 import type { Architecture } from '@/lib/types';
 import type { LoadReport, StorageAdapter } from './adapter';
 import { migrateArchitecture } from './migrate';
+import {
+  BACKUP_KEY,
+  DEFAULT_MAP_ID,
+  STORAGE_KEY,
+  WORKSPACE_KEY,
+  mapStorageKey,
+} from './keys';
 
-export const STORAGE_KEY = 'stackmap_architecture';
-/** Where unusable stored data is parked rather than deleted outright. */
-export const BACKUP_KEY = 'stackmap_architecture_backup';
+export { STORAGE_KEY, BACKUP_KEY };
 
 interface LocalStorageAdapterOptions {
   forceInMemory?: boolean;
+  /**
+   * Which map to read and write. Left out, the adapter follows whichever map
+   * the workspace says is active, so a page does not have to know.
+   */
+  mapId?: string;
 }
 
 export class LocalStorageAdapter implements StorageAdapter {
   private inMemoryStore: string | null = null;
   private inMemoryBackup: string | null = null;
   private readonly useMemory: boolean;
+  private readonly fixedMapId?: string;
   private lastLoadReport: LoadReport | null = null;
 
   constructor(options?: LocalStorageAdapterOptions) {
     this.useMemory = options?.forceInMemory ?? !LocalStorageAdapter.isLocalStorageAvailable();
+    this.fixedMapId = options?.mapId;
+  }
+
+  /**
+   * The key this adapter works against.
+   *
+   * Resolved per call rather than in the constructor: switching map writes a
+   * new active id, and an adapter that cached the old one would go on writing
+   * the previous map's document.
+   */
+  private storageKey(): string {
+    if (this.fixedMapId) return mapStorageKey(this.fixedMapId);
+
+    try {
+      const raw = localStorage.getItem(WORKSPACE_KEY);
+      if (!raw) return STORAGE_KEY;
+      const parsed = JSON.parse(raw) as { activeMapId?: unknown };
+      return typeof parsed.activeMapId === 'string'
+        ? mapStorageKey(parsed.activeMapId)
+        : STORAGE_KEY;
+    } catch {
+      // No workspace, or an unreadable one: the original single map
+      return mapStorageKey(DEFAULT_MAP_ID);
+    }
   }
 
   private static isLocalStorageAvailable(): boolean {
@@ -32,7 +67,7 @@ export class LocalStorageAdapter implements StorageAdapter {
   }
 
   private read(): string | null {
-    return this.useMemory ? this.inMemoryStore : localStorage.getItem(STORAGE_KEY);
+    return this.useMemory ? this.inMemoryStore : localStorage.getItem(this.storageKey());
   }
 
   /**
@@ -52,7 +87,7 @@ export class LocalStorageAdapter implements StorageAdapter {
       // If even the backup will not fit, still clear the bad document so the
       // app can start; there is nothing more we can do here.
     }
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(this.storageKey());
   }
 
   async load(): Promise<Architecture | null> {
@@ -94,7 +129,7 @@ export class LocalStorageAdapter implements StorageAdapter {
     if (this.useMemory) {
       this.inMemoryStore = json;
     } else {
-      localStorage.setItem(STORAGE_KEY, json);
+      localStorage.setItem(this.storageKey(), json);
     }
   }
 
@@ -102,7 +137,7 @@ export class LocalStorageAdapter implements StorageAdapter {
     if (this.useMemory) {
       this.inMemoryStore = null;
     } else {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(this.storageKey());
     }
   }
 

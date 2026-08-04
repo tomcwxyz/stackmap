@@ -734,3 +734,47 @@ most organisations keep theirs, and what an ICO request will expect.
     your map; the gaps, the wording and the accuracy are yours. Check every line
     and have someone accountable sign it off. An Article 30 record is a legal
     responsibility, not a tool's output.
+
+---
+
+## 23. Several Maps, and Snapshots
+
+Everything Stackmap stores lives in your browser, and until now that meant one
+map. **Your maps** in the header (or `/maps`) lets you keep several, and keep
+snapshots of the one you are working on.
+
+### Why you might want more than one
+
+- **You advise more than one organisation.** Previously you had to clear the map
+  between them. Now each has its own, and switching does not touch the others.
+- **You want to ask "what if".** Copy the map, change the copy, and compare —
+  without putting the map that describes what is actually there at risk.
+
+### Working with maps
+
+| Action | What happens |
+|--------|--------------|
+| **Add** | A blank map under a name you choose. You stay on the map you were on |
+| **Or copy _name_** | A duplicate of the current map, so the original is untouched |
+| **Switch to this** | Makes that map the one everything else reads, then opens your systems |
+| **Rename** | Changes the name only; the map itself is unaffected |
+| **Delete** | Removes the map and its snapshots, after asking. The last map cannot be deleted |
+
+Your first map is the one you already had — nothing is moved or rewritten when
+the list is created, so if you never make a second map, nothing changes for you.
+
+### Snapshots
+
+A snapshot is the map exactly as it is at that moment, saved under a label. Take
+one before a big change and you can put it back if the change was wrong.
+
+- The last **ten** snapshots of each map are kept; older ones are dropped rather
+  than filling up the browser's storage.
+- **Restore** puts a snapshot back over the map — and snapshots what was there
+  first, labelled "Before restoring", so restoring the wrong one costs nothing.
+- Snapshots belong to a map. Deleting a map deletes them with it.
+
+!!! warning
+    Snapshots are stored in the same browser as the map, so they protect against
+    a bad edit — not against a lost laptop or a cleared browser. Export as JSON
+    for anything you cannot afford to lose.
