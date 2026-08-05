@@ -70,6 +70,27 @@ test.describe('the wizard', () => {
     await expect(page.getByText('Xero').first()).toBeVisible();
   });
 
+  test('reaches the review without naming a single owner', async ({ page }) => {
+    // Nobody should be stuck at the owners step because they do not know who
+    // looks after a system
+    await startWizard(page);
+    await skipRiskAssessment(page);
+    await pickFunctions(page, ['Finance']);
+    await addSystem(page, 'Xero');
+
+    await page.goto('/wizard/functions/owners');
+    await expect(page.getByText(/no owner yet for/i)).toBeVisible();
+
+    const cont = page.getByRole('button', { name: /^continue$/i });
+    await expect(cont).toBeEnabled();
+    await cont.click();
+
+    await page.waitForURL('**/wizard/functions/review');
+    await expect(
+      page.getByRole('heading', { name: /technology map for sunrise trust/i }),
+    ).toBeVisible();
+  });
+
   test('keeps what was entered when a step is revisited', async ({ page }) => {
     await startWizard(page);
     await skipRiskAssessment(page);
@@ -171,6 +192,38 @@ test.describe('the systems inventory', () => {
     // And it is still retiring after a reload
     await page.reload();
     await expect(statusCell).toBeVisible();
+  });
+
+  test('assigns a function to a system, and the diagram follows', async ({ page }) => {
+    // The diagram groups systems into function subgraphs; a system with no
+    // function is drawn loose. Until now the only way to attach one was to
+    // walk the wizard's systems step again.
+    await startWizard(page);
+    await skipRiskAssessment(page);
+    await pickFunctions(page, ['Finance']);
+    await addSystem(page, 'Xero');
+
+    await page.goto('/view/systems');
+    await page.getByRole('button', { name: 'Edit Xero' }).click();
+
+    const finance = page.getByRole('checkbox', { name: 'Finance' });
+    await expect(finance).toBeChecked();
+
+    // The Function column, which is the third — the second is the system's
+    // type, which says "Finance" for Xero whatever it is used for
+    const functionCell = page.getByRole('row').last().getByRole('cell').nth(2);
+    await expect(functionCell).toHaveText('Finance');
+
+    // Detach it, and the table stops reporting a function for it
+    await finance.uncheck();
+    await page.getByRole('button', { name: /save changes/i }).click();
+    await expect(functionCell).toHaveText('—');
+
+    // Put it back
+    await page.getByRole('button', { name: 'Edit Xero' }).click();
+    await page.getByRole('checkbox', { name: 'Finance' }).check();
+    await page.getByRole('button', { name: /save changes/i }).click();
+    await expect(functionCell).toHaveText('Finance');
   });
 
   test('deletes a system once confirmed', async ({ page }) => {

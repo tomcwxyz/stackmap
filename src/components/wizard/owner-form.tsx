@@ -143,16 +143,25 @@ export function OwnerForm() {
           Who is responsible for each system?
         </h1>
         <p className="text-lg text-primary-700">
-          Knowing who looks after each system helps when things go wrong or decisions need making.
+          Knowing who looks after each system helps when things go wrong or decisions need
+          making. Fill in as many as you know — you can carry on without this and come back to
+          it later.
         </p>
       </div>
 
-      {/* Systems needing attention */}
+      {/* What is still unassigned. Deliberately not a warning: an owner is
+          useful to record, but nobody should be stuck at this step because they
+          do not know who looks after a system, and plenty of small
+          organisations genuinely have no single answer. */}
       {unownedSystems.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <p className="text-sm font-medium text-amber-800 break-words">
-            {unownedSystems.length} {unownedSystems.length === 1 ? 'system needs' : 'systems need'} an owner:{' '}
-            {unownedSystems.map((s) => s.name).join(', ')}
+        <div className="bg-surface-100 border border-surface-300 rounded-lg p-4">
+          <p className="text-sm text-primary-800 break-words">
+            No owner yet for{' '}
+            <span className="font-medium">
+              {unownedSystems.map((s) => s.name).join(', ')}
+            </span>
+            . That is fine — you can continue, and add owners here or from Your systems whenever
+            you like.
           </p>
         </div>
       )}

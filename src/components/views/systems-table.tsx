@@ -309,6 +309,7 @@ export function SystemsTable() {
                         <SystemEditForm
                           system={system}
                           owners={architecture.owners}
+                          functions={architecture.functions}
                           techFreedomEnabled={techFreedomEnabled}
                           onSave={(updates) => {
                             updateSystem(system.id, updates);

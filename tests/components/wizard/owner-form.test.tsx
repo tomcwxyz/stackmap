@@ -93,11 +93,27 @@ describe('OwnerForm', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows systems needing owners', () => {
+  it('says which systems have no owner yet, without demanding one', () => {
     render(<OwnerForm />);
-    expect(screen.getByText(/2 systems need an owner/i)).toBeInTheDocument();
-    // Names appear in both the warning and the dropdown, so check the warning text contains them
+
+    expect(screen.getByText(/no owner yet for/i)).toBeInTheDocument();
+    // Names appear in the note and in the dropdown, so match the note's list
     expect(screen.getByText(/Xero, Salesforce/)).toBeInTheDocument();
+    expect(screen.getByText(/that is fine — you can continue/i)).toBeInTheDocument();
+  });
+
+  it('lets the step be left without naming a single owner', () => {
+    // Nobody should be stuck here because they do not know who looks after a
+    // system, and plenty of small organisations have no single answer
+    render(<OwnerForm />);
+
+    expect(screen.getByRole('button', { name: /continue/i })).toBeEnabled();
+  });
+
+  it('says up front that this can be filled in later', () => {
+    render(<OwnerForm />);
+
+    expect(screen.getByText(/come back to it later/i)).toBeInTheDocument();
   });
 
   it('has name, role, external checkbox, and system assignment fields', () => {
