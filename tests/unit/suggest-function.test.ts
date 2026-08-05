@@ -104,3 +104,14 @@ describe('categories the wizard has no system type for', () => {
     expect(suggestFunction('Some Tool', 'other', 'Nonsense').suggested).toBeUndefined();
   });
 });
+
+describe('infrastructure and transactional email', () => {
+  it('files DigitalOcean under how the organisation runs', () => {
+    // Hosting would otherwise read as a website, and so Communications
+    expect(suggestFunction('DigitalOcean', 'website', 'Hosting').suggested).toBe('operations');
+  });
+
+  it('files Resend under communications', () => {
+    expect(suggestFunction('Resend', 'email', 'Email').suggested).toBe('communications');
+  });
+});

@@ -3,7 +3,7 @@
 **Lightweight architecture mapping for social purpose organisations.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-1124%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-1127%20passing-brightgreen.svg)]()
 [![WCAG 2.1 AA](https://img.shields.io/badge/accessibility-WCAG%202.1%20AA-blue.svg)]()
 
 ---
@@ -24,7 +24,7 @@ Stackmap is an open source tool that solves this problem. It provides a guided w
 - **14 service templates** with auto-populated tool suggestions (Advice sessions, Grant distribution, Youth programmes, and more)
 - **System suggestions** tailored by organisation type and size
 - **TechFreedom risk assessment** (optional) — scores systems across 5 dimensions: jurisdiction, continuity, surveillance, lock-in, and cost exposure
-- **139 pre-scored known tools** with detailed pricing data for automatic cost estimation
+- **141 pre-scored known tools** with detailed pricing data for automatic cost estimation
 - **Smart cost estimation** with per-seat pricing, tier selection, and penetration rates
 - **Spend discovery** — import an accounting or bank export and find the tools you pay for, with what they actually cost; column detection handles the common header conventions, you can map the columns yourself when it does not, and each tool is filed under a suggested function rather than arriving unattached
 - **Systems inventory** — search, filter, sort, edit and delete every system in one place after the wizard
@@ -130,7 +130,7 @@ npm run typecheck     # TypeScript type checking
 
 ### Testing
 
-Stackmap follows a strict TDD workflow (red, green, refactor). The test suite currently includes **1124 tests across 83 test files**.
+Stackmap follows a strict TDD workflow (red, green, refactor). The test suite currently includes **1127 tests across 83 test files**.
 
 Every component test includes an accessibility check using jest-axe:
 

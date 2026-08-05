@@ -77,6 +77,7 @@ const SUGGESTIONS: Record<StandardFunction, SuggestionEntry[]> = {
   communications: [
     { name: 'Mailchimp', description: 'Email marketing and newsletters' },
     { name: 'Brevo', description: 'EU-based email marketing alternative' },
+    { name: 'Resend', description: 'Sends the email your systems generate — receipts, resets, alerts' },
     { name: 'Listmonk', description: 'Free self-hosted email (privacy-first)', orgTypes: ['cooperative'] },
     { name: 'Canva', description: 'Design tool for social and print' },
     { name: 'Penpot', description: 'Free open-source design tool', orgTypes: ['cooperative'] },
@@ -133,6 +134,7 @@ const SUGGESTIONS: Record<StandardFunction, SuggestionEntry[]> = {
     { name: 'Monday.com', description: 'Visual project management' },
     { name: 'Todoist', description: 'Simple task management', sizes: ['micro', 'small'] },
     { name: 'Nextcloud', description: 'Self-hosted files and collaboration', orgTypes: ['cooperative'] },
+    { name: 'DigitalOcean', description: 'Servers and managed databases behind your own tools' },
     { name: 'Zapier', description: 'Automate workflows between tools' },
     { name: 'Make', description: 'EU-based workflow automation' },
     { name: 'ChatGPT', description: 'AI assistant for everyday tasks' },

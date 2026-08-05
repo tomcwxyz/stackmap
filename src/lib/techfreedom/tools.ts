@@ -589,6 +589,32 @@ export const KNOWN_TOOLS: KnownTool[] = [
     estimatedAnnualCost: 480,
     pricing: { model: 'free' },
   },
+  {
+    slug: 'resend',
+    name: 'Resend',
+    provider: 'Resend',
+    category: 'Email',
+    score: {
+      jurisdiction: 4,
+      continuity: 3,
+      surveillance: 2,
+      lockIn: 2,
+      costExposure: 2,
+      isAutoScored: true,
+    },
+    keyRisks:
+      'US-headquartered; sends the transactional email your systems generate — receipts, password resets, notifications — so message content passes through them; young company, so continuity is unproven; a standard email API, so another sender can take over without changing much; clear tiered pricing',
+    estimatedAnnualCost: 0,
+    pricing: {
+      model: 'tiered',
+      penetrationRate: 0.05,
+      tiers: [
+        { name: 'Free', annualPerSeat: 0, maxUsers: 3 },
+        { name: 'Pro', annualPerSeat: 190, recommended: true },
+      ],
+      notes: 'Free up to 3,000 emails a month. This is for email your systems send, not newsletters',
+    },
+  },
 
   // --- AI Tools ---
   {
@@ -1405,6 +1431,30 @@ export const KNOWN_TOOLS: KnownTool[] = [
         { name: 'Free', annualPerSeat: 0, maxUsers: 3 },
         { name: 'Pro', annualPerSeat: 240, recommended: true },
       ],
+    },
+  },
+  {
+    slug: 'digitalocean',
+    name: 'DigitalOcean',
+    provider: 'DigitalOcean',
+    aliases: ['digital ocean'],
+    category: 'Hosting',
+    score: {
+      jurisdiction: 4,
+      continuity: 2,
+      surveillance: 1,
+      lockIn: 2,
+      costExposure: 2,
+      isAutoScored: true,
+    },
+    keyRisks:
+      'US jurisdiction; plain Linux servers and managed databases, so workloads move to another host without rewriting them; flat per-month pricing is unusually predictable for cloud infrastructure; UK and EU regions available; needs someone comfortable administering a server',
+    estimatedAnnualCost: 190,
+    pricing: {
+      model: 'flat',
+      flatAnnual: 190,
+      penetrationRate: 0.05,
+      notes: 'Roughly £16/month for a small droplet plus backups. Scales predictably, unlike usage-billed clouds',
     },
   },
   {

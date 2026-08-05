@@ -200,4 +200,10 @@ describe('tools that turn up on a developer-ish statement', () => {
     expect(local.score.jurisdiction).toBeLessThan(hosted.score.jurisdiction);
     expect(local.score.surveillance).toBeLessThan(hosted.score.surveillance);
   });
+
+  it('recognises DigitalOcean and Resend', () => {
+    expect(findMatchingTool('DIGITALOCEAN.COM', KNOWN_TOOLS)?.name).toBe('DigitalOcean');
+    expect(findMatchingTool('Digital Ocean', KNOWN_TOOLS)?.name).toBe('DigitalOcean');
+    expect(findMatchingTool('RESEND', KNOWN_TOOLS)?.name).toBe('Resend');
+  });
 });
