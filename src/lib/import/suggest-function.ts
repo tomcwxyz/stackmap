@@ -25,6 +25,29 @@ const TYPE_TO_FUNCTION: Partial<Record<SystemType, StandardFunction>> = {
 /** How many functions a tool must span before it counts as general-purpose. */
 const PAN_ORGANISATIONAL_AT = 3;
 
+/**
+ * Where a category of tool usually sits, for tools the templates say nothing
+ * about and whose kind of system says nothing either.
+ *
+ * The tools database has categories the wizard's system types cannot express —
+ * there is no "AI" or "Events" system type — so without this an AI assistant or
+ * a ticketing platform arrives filed under nothing, which is the bucket this
+ * whole thing exists to empty.
+ */
+const CATEGORY_TO_FUNCTION: Record<string, StandardFunction> = {
+  AI: 'operations',
+  Events: 'fundraising',
+  Design: 'communications',
+  'Social Media': 'communications',
+  Geospatial: 'service_delivery',
+  Marketing: 'communications',
+  Payment: 'finance',
+  Storage: 'operations',
+  Productivity: 'operations',
+  'Project Management': 'operations',
+  'Data Visualisation': 'data_reporting',
+};
+
 export interface FunctionSuggestion {
   /** The best guess, or undefined when there is nothing to go on. */
   suggested?: StandardFunction;
@@ -51,6 +74,7 @@ export interface FunctionSuggestion {
 export function suggestFunction(
   systemName: string,
   systemType: SystemType = 'other',
+  category?: string,
 ): FunctionSuggestion {
   const candidates = [...getFunctionsSuggesting(systemName)];
   const byType = TYPE_TO_FUNCTION[systemType];
@@ -82,6 +106,11 @@ export function suggestFunction(
 
   // Nothing curated: fall back to the kind of system it is
   if (byType) return { suggested: byType, candidates: [byType] };
+
+  // Still nothing: the tools database knows what sort of thing it is even when
+  // the wizard's system types cannot say so
+  const byCategory = category ? CATEGORY_TO_FUNCTION[category] : undefined;
+  if (byCategory) return { suggested: byCategory, candidates: [byCategory] };
 
   return { candidates: [] };
 }

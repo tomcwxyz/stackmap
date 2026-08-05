@@ -97,7 +97,9 @@ function functionIdFor(
   const chosen = assignments[match.originalPayee];
   if (chosen === 'none') return undefined;
 
-  const target = chosen ?? suggestFunction(match.tool?.name ?? match.payee, type).suggested;
+  const target =
+    chosen ??
+    suggestFunction(match.tool?.name ?? match.payee, type, match.tool?.category).suggested;
   if (!target) return undefined;
 
   return resolveFunction(target, functions, created);

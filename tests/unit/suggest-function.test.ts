@@ -81,3 +81,26 @@ describe('tools used across the whole organisation', () => {
     expect(suggestFunction('Slack', 'other').suggested).toBe('people');
   });
 });
+
+describe('categories the wizard has no system type for', () => {
+  it('files an AI tool under how the organisation runs', () => {
+    // There is no "AI" system type, so without the category these arrived
+    // filed under nothing — the bucket this exists to empty
+    expect(suggestFunction('Firecrawl', 'other', 'AI').suggested).toBe('operations');
+  });
+
+  it('files a ticketing platform under fundraising', () => {
+    expect(suggestFunction('Eventbrite', 'other', 'Events').suggested).toBe('fundraising');
+  });
+
+  it('prefers what the templates say over the category', () => {
+    // Xero's category is Finance and so is its curated function, but the
+    // curated answer should be the one doing the work
+    const { candidates } = suggestFunction('Xero', 'finance', 'Finance');
+    expect(candidates.length).toBeGreaterThan(0);
+  });
+
+  it('suggests nothing for a category it has no view on', () => {
+    expect(suggestFunction('Some Tool', 'other', 'Nonsense').suggested).toBeUndefined();
+  });
+});

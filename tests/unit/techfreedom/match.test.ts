@@ -167,3 +167,37 @@ describe('findMatchingTool refusing a bad guess', () => {
     });
   });
 });
+
+describe('tools that turn up on a developer-ish statement', () => {
+  it('tells Google Cloud apart from Google Workspace', () => {
+    // Before Google Cloud was in the database, a "Google Cloud" line was
+    // matched to Google Workspace — a different product entirely
+    expect(findMatchingTool('Google Cloud', KNOWN_TOOLS)?.name).toBe('Google Cloud');
+    expect(findMatchingTool('GCP', KNOWN_TOOLS)?.name).toBe('Google Cloud');
+    expect(findMatchingTool('Google Workspace', KNOWN_TOOLS)?.name).toBe('Google Workspace');
+  });
+
+  it('recognises the domain-style names statements carry', () => {
+    expect(findMatchingTool('NEON.TECH', KNOWN_TOOLS)?.name).toBe('Neon');
+    expect(findMatchingTool('FIRECRAWL.DEV', KNOWN_TOOLS)?.name).toBe('Firecrawl');
+  });
+
+  it('keeps hosted Ollama separate from the one on your own machine', () => {
+    // They have very different jurisdiction and surveillance answers
+    expect(findMatchingTool('OLLAMA', KNOWN_TOOLS)?.name).toBe('Ollama');
+    expect(findMatchingTool('OLLAMA CLOUD', KNOWN_TOOLS)?.name).toBe('Ollama Cloud');
+  });
+
+  it('recognises OpenCode without confusing it for OpenAI', () => {
+    expect(findMatchingTool('OPENCODE', KNOWN_TOOLS)?.name).toBe('OpenCode');
+    expect(findMatchingTool('OPENAI', KNOWN_TOOLS)?.name).toBe('ChatGPT');
+  });
+
+  it('scores a locally run tool as lower risk than its hosted twin', () => {
+    const local = findMatchingTool('Ollama', KNOWN_TOOLS)!;
+    const hosted = findMatchingTool('Ollama Cloud', KNOWN_TOOLS)!;
+
+    expect(local.score.jurisdiction).toBeLessThan(hosted.score.jurisdiction);
+    expect(local.score.surveillance).toBeLessThan(hosted.score.surveillance);
+  });
+});

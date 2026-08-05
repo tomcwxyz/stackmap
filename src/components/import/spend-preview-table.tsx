@@ -121,7 +121,7 @@ function FunctionPicker({
   onAssign: (originalPayee: string, value: StandardFunction | 'none') => void;
 }) {
   const name = match.tool?.name ?? match.payee;
-  const { suggested, candidates } = suggestFunction(name);
+  const { suggested, candidates } = suggestFunction(name, undefined, match.tool?.category);
   const value = assignments[match.originalPayee] ?? suggested ?? 'none';
 
   // Whatever the tool points at first, then everything else, so the likely

@@ -1025,6 +1025,78 @@ export const KNOWN_TOOLS: KnownTool[] = [
     },
   },
   {
+    slug: 'ollama-cloud',
+    name: 'Ollama Cloud',
+    provider: 'Ollama',
+    category: 'AI',
+    score: {
+      jurisdiction: 4,
+      continuity: 3,
+      surveillance: 2,
+      lockIn: 1,
+      costExposure: 2,
+      isAutoScored: true,
+    },
+    keyRisks:
+      'US-hosted, so prompts leave your network — unlike running Ollama locally; young paid service, so continuity is unproven; almost no lock-in, since the same open models run locally if you stop paying; flat monthly price is predictable',
+    estimatedAnnualCost: 190,
+    pricing: {
+      model: 'flat',
+      flatAnnual: 190,
+      penetrationRate: 0.1,
+      notes: 'Roughly $20/month. Runs the same open models as local Ollama on their hardware, for machines that cannot',
+    },
+  },
+  {
+    slug: 'opencode',
+    name: 'OpenCode',
+    provider: 'OpenCode (open source)',
+    category: 'AI',
+    score: {
+      jurisdiction: 1,
+      continuity: 2,
+      surveillance: 1,
+      lockIn: 1,
+      costExposure: 2,
+      isAutoScored: true,
+    },
+    keyRisks:
+      'Open source and runs on your own machine; bring your own model provider, so you are not tied to one AI vendor and can point it at a local model; the client itself is free, but whichever model provider you choose carries its own cost and jurisdiction; young project',
+    estimatedAnnualCost: 0,
+    pricing: {
+      model: 'free',
+      notes: 'The tool is free and open source. Cost comes from the model provider you connect it to',
+    },
+  },
+  {
+    slug: 'firecrawl',
+    name: 'Firecrawl',
+    provider: 'Firecrawl',
+    aliases: ['firecrawl.dev'],
+    category: 'AI',
+    score: {
+      jurisdiction: 4,
+      continuity: 3,
+      surveillance: 2,
+      lockIn: 2,
+      costExposure: 3,
+      isAutoScored: true,
+    },
+    keyRisks:
+      'US-headquartered; turns websites into text for AI tools; young company, so continuity is unproven; open source with a self-hostable option, which limits lock-in; credit-based pricing can run down faster than expected on large crawls',
+    estimatedAnnualCost: 190,
+    pricing: {
+      model: 'tiered',
+      penetrationRate: 0.05,
+      tiers: [
+        { name: 'Free', annualPerSeat: 0, maxUsers: 3 },
+        { name: 'Hobby', annualPerSeat: 190, recommended: true },
+        { name: 'Standard', annualPerSeat: 950 },
+      ],
+      notes: 'Credit-based. Self-hosting is possible for organisations that would rather not send URLs to a third party',
+    },
+  },
+  {
     slug: 'lm-studio',
     name: 'LM Studio',
     provider: 'LM Studio',
@@ -1356,6 +1428,30 @@ export const KNOWN_TOOLS: KnownTool[] = [
       flatAnnual: 1200,
       penetrationRate: 0.05,
       notes: 'Highly variable — £100/mo is typical for small org; can range from £0 to £10,000+',
+    },
+  },
+  {
+    slug: 'google-cloud',
+    name: 'Google Cloud',
+    provider: 'Google',
+    aliases: ['gcp', 'google cloud platform'],
+    category: 'Hosting',
+    score: {
+      jurisdiction: 4,
+      continuity: 1,
+      surveillance: 3,
+      lockIn: 4,
+      costExposure: 5,
+      isAutoScored: true,
+    },
+    keyRisks:
+      'US jurisdiction; heavy lock-in through managed services such as BigQuery and Firestore; usage-based pricing is hard to predict and can spike; data egress fees; Google has a record of retiring products; UK and EU regions available',
+    estimatedAnnualCost: 900,
+    pricing: {
+      model: 'flat',
+      flatAnnual: 900,
+      penetrationRate: 0.05,
+      notes: 'Highly variable — £75/mo is typical for a small org running a few services; can range from £0 on the free tier to several thousand',
     },
   },
   {
@@ -1702,6 +1798,33 @@ export const KNOWN_TOOLS: KnownTool[] = [
         { name: 'Pro', annualPerSeat: 300, recommended: true },
       ],
       notes: 'Open-source Firebase alternative built on PostgreSQL',
+    },
+  },
+  {
+    slug: 'neon',
+    name: 'Neon',
+    provider: 'Neon',
+    aliases: ['neon.tech', 'neon database'],
+    category: 'Database',
+    score: {
+      jurisdiction: 4,
+      continuity: 3,
+      surveillance: 1,
+      lockIn: 1,
+      costExposure: 3,
+      isAutoScored: true,
+    },
+    keyRisks:
+      'US-headquartered; serverless PostgreSQL, so data is fully portable and any Postgres host can take over; young company acquired by Databricks in 2025, which puts some question over continuity; usage-based pricing scales with compute time and can surprise; EU regions available',
+    estimatedAnnualCost: 0,
+    pricing: {
+      model: 'tiered',
+      penetrationRate: 0.05,
+      tiers: [
+        { name: 'Free', annualPerSeat: 0, maxUsers: 3 },
+        { name: 'Launch', annualPerSeat: 228, recommended: true },
+      ],
+      notes: 'Serverless PostgreSQL with branching. Standard Postgres, so migration away is straightforward',
     },
   },
 
