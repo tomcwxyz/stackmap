@@ -27,8 +27,20 @@ export type SpendParseResult =
 
 // ─── Column detection ───
 
+/**
+ * Headers that hold the name of whoever was paid, best first.
+ *
+ * Banks and accounting packages agree on almost nothing here: Starling says
+ * "Counter Party", Xero says "Contact", most high-street banks say
+ * "Description". Order matters — a file with both a clean merchant name and a
+ * raw card descriptor should use the clean one.
+ */
 const PAYEE_COLUMNS = [
   'payee',
+  'counter party',
+  'counterparty',
+  'paid to',
+  'beneficiary',
   'contact',
   'supplier',
   'vendor',
@@ -39,17 +51,41 @@ const PAYEE_COLUMNS = [
   'particulars',
   'transaction description',
   'name',
+  'reference',
+  'memo',
 ];
 
-const AMOUNT_COLUMNS = ['amount', 'value', 'total', 'transaction amount'];
+const AMOUNT_COLUMNS = ['amount', 'value', 'net', 'total', 'transaction amount', 'paid'];
 
 /** Columns that only ever hold money going out. */
 const DEBIT_COLUMNS = ['debit', 'money out', 'paid out', 'withdrawal', 'withdrawn', 'spent', 'out'];
 
-const DATE_COLUMNS = ['date', 'transaction date', 'posted date', 'posted', 'when'];
+/**
+ * Never the transaction amount, however much the name looks like it.
+ *
+ * A running balance sits next to the amount in most bank exports and is the
+ * same shape, so partial matching will happily take it and report someone's
+ * account balance as what they pay for software.
+ */
+const NOT_AMOUNT_COLUMNS = ['balance', 'running total', 'brought forward', 'carried forward'];
 
-function findColumn(headers: string[], candidates: string[]): string | undefined {
-  const normalised = headers.map((h) => ({ raw: h, key: h.trim().toLowerCase() }));
+const DATE_COLUMNS = [
+  'date',
+  'transaction date',
+  'posted date',
+  'completed date',
+  'posted',
+  'when',
+];
+
+function findColumn(
+  headers: string[],
+  candidates: string[],
+  exclude: string[] = [],
+): string | undefined {
+  const normalised = headers
+    .map((h) => ({ raw: h, key: h.trim().toLowerCase() }))
+    .filter((h) => !exclude.some((word) => h.key.includes(word)));
 
   // Prefer an exact header match before falling back to a partial one
   for (const candidate of candidates) {
@@ -61,6 +97,77 @@ function findColumn(headers: string[], candidates: string[]): string | undefined
     if (partial) return partial.raw;
   }
   return undefined;
+}
+
+// ─── Column mapping ───
+
+/** Which column in the file holds each thing the importer needs. */
+export interface SpendColumnMapping {
+  payee: string;
+  amount: string;
+  date?: string;
+  /**
+   * True when the amount column holds only money going out, as "Money out" and
+   * "Debit" columns do. Otherwise negatives are taken to mean spending.
+   */
+  amountIsDebitOnly?: boolean;
+}
+
+export interface SpendFilePreview {
+  headers: string[];
+  /** A few rows, so a person can see what each column actually holds. */
+  sampleRows: Record<string, string>[];
+  /** What detection worked out, for the user to confirm or correct. */
+  suggested: Partial<SpendColumnMapping>;
+}
+
+export type SpendInspectResult =
+  | { success: true; preview: SpendFilePreview }
+  | { success: false; error: string };
+
+const SAMPLE_ROW_COUNT = 3;
+
+function readRows(text: string): Record<string, string>[] {
+  const parsed = Papa.parse<Record<string, string>>(text, {
+    header: true,
+    skipEmptyLines: true,
+    transformHeader: (h) => h.trim(),
+  });
+  return parsed.data.filter((row) => Object.keys(row).length > 0);
+}
+
+function detectMapping(headers: string[]): Partial<SpendColumnMapping> {
+  const debit = findColumn(headers, DEBIT_COLUMNS, NOT_AMOUNT_COLUMNS);
+  return {
+    payee: findColumn(headers, PAYEE_COLUMNS),
+    amount: debit ?? findColumn(headers, AMOUNT_COLUMNS, NOT_AMOUNT_COLUMNS),
+    date: findColumn(headers, DATE_COLUMNS),
+    amountIsDebitOnly: Boolean(debit),
+  };
+}
+
+/**
+ * Read a file's shape without committing to an interpretation of it.
+ *
+ * Detection covers the exports we know about, but there are as many header
+ * conventions as there are banks. Returning the headers and a few rows lets
+ * the user say which column is which when the guess is wrong — or missing.
+ */
+export function inspectSpendCsv(text: string): SpendInspectResult {
+  const rows = readRows(text);
+  if (rows.length === 0) {
+    return { success: false, error: 'That file has no rows in it.' };
+  }
+
+  const headers = Object.keys(rows[0]);
+  return {
+    success: true,
+    preview: {
+      headers,
+      sampleRows: rows.slice(0, SAMPLE_ROW_COUNT),
+      suggested: detectMapping(headers),
+    },
+  };
 }
 
 // ─── Payee cleaning ───
@@ -275,30 +382,31 @@ interface Group {
   dates: Date[];
 }
 
-export function parseSpendCsv(text: string): SpendParseResult {
-  const parsed = Papa.parse<Record<string, string>>(text, {
-    header: true,
-    skipEmptyLines: true,
-    transformHeader: (h) => h.trim(),
-  });
-
-  const rows = parsed.data.filter((row) => Object.keys(row).length > 0);
+/**
+ * Turn a spend export into grouped payments.
+ *
+ * A mapping can be given when the user has told us which column is which;
+ * without one the headers are read and detection does its best.
+ */
+export function parseSpendCsv(text: string, mapping?: SpendColumnMapping): SpendParseResult {
+  const rows = readRows(text);
   if (rows.length === 0) {
     return { success: false, error: 'That file has no rows in it.' };
   }
 
   const headers = Object.keys(rows[0]);
-  const payeeColumn = findColumn(headers, PAYEE_COLUMNS);
+  const chosen = mapping ?? detectMapping(headers);
+
+  const payeeColumn = chosen.payee;
   if (!payeeColumn) {
     return {
       success: false,
       error:
-        'No column of payees or descriptions found. Expected a column such as Payee, Contact, Supplier or Description.',
+        'No column of payees or descriptions found. Expected a column such as Payee, Counter Party, Contact, Supplier or Description.',
     };
   }
 
-  const debitColumn = findColumn(headers, DEBIT_COLUMNS);
-  const amountColumn = debitColumn ?? findColumn(headers, AMOUNT_COLUMNS);
+  const amountColumn = chosen.amount;
   if (!amountColumn) {
     return {
       success: false,
@@ -306,7 +414,18 @@ export function parseSpendCsv(text: string): SpendParseResult {
     };
   }
 
-  const dateColumn = findColumn(headers, DATE_COLUMNS);
+  const missing = [payeeColumn, amountColumn, chosen.date]
+    .filter((column): column is string => Boolean(column))
+    .filter((column) => !headers.includes(column));
+  if (missing.length > 0) {
+    return {
+      success: false,
+      error: `That file has no column called ${missing.map((c) => `"${c}"`).join(' or ')}.`,
+    };
+  }
+
+  const debitOnly = chosen.amountIsDebitOnly === true;
+  const dateColumn = chosen.date;
   const warnings: string[] = [];
   if (!dateColumn) {
     warnings.push('No date column found, so how often you pay could not be worked out.');
@@ -331,7 +450,7 @@ export function parseSpendCsv(text: string): SpendParseResult {
 
   // A single amount column may use negatives for money leaving the account. If
   // any row is negative, those are the payments; otherwise every row is one.
-  const hasNegatives = !debitColumn && raw.some((row) => row.amount < 0);
+  const hasNegatives = !debitOnly && raw.some((row) => row.amount < 0);
   const payments = raw
     .filter((row) => (hasNegatives ? row.amount < 0 : row.amount > 0))
     .map((row) => ({ ...row, amount: Math.abs(row.amount) }));

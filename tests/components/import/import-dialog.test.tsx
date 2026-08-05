@@ -417,6 +417,110 @@ describe('ImportDialog', () => {
       return { user, onImportSpend };
     }
 
+    describe('choosing the columns', () => {
+      // A real Starling export. Not one of these headers is a name the
+      // importer was originally written to look for.
+      const starlingCsv = [
+        'Date,Counter Party,Reference,Type,Amount (GBP),Balance (GBP)',
+        '02/05/2026,Google Cloud,Google Workspace_good-,CARD SUBSCRIPTION,-26.08,1101.78',
+        '02/06/2026,Google Cloud,Google Workspace_good-,CARD SUBSCRIPTION,-26.08,2025.86',
+        '02/07/2026,Google Cloud,Google Workspace_good-,CARD SUBSCRIPTION,-26.08,5338.98',
+      ].join('\n');
+
+      const unfamiliarCsv = ['Col1,Col2', 'Xero,33.00', 'Xero,33.00'].join('\n');
+
+      async function upload(csv: string) {
+        const user = userEvent.setup();
+        render(
+          <ImportDialog
+            open
+            mode="merge"
+            onClose={vi.fn()}
+            onImport={vi.fn()}
+            onImportSpend={vi.fn()}
+          />,
+        );
+        await user.click(screen.getByText(/accounting or bank export/i));
+        const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+        await user.upload(input, createFile(csv, 'spend.csv', 'text/csv'));
+        return user;
+      }
+
+      it('reads a bank export whose headers it has never seen, without asking', async () => {
+        await upload(starlingCsv);
+
+        expect(await screen.findByTestId('spend-summary')).toHaveTextContent(
+          /1 payee that looks like a tool/i,
+        );
+      });
+
+      it('asks which columns to use rather than giving up on an odd file', async () => {
+        await upload(unfamiliarCsv);
+
+        expect(await screen.findByLabelText(/who was paid/i)).toBeInTheDocument();
+        expect(screen.getByText(/none of these headers looked familiar/i)).toBeInTheDocument();
+      });
+
+      it('shows example values, since a header name often does not say enough', async () => {
+        await upload(unfamiliarCsv);
+
+        const select = await screen.findByLabelText(/who was paid/i);
+        expect(within(select).getByRole('option', { name: /Col1 — e.g. Xero/ })).toBeInTheDocument();
+      });
+
+      it('cannot be confirmed until both required columns are chosen', async () => {
+        const user = await upload(unfamiliarCsv);
+        const confirm = screen.getByRole('button', { name: /read the file/i });
+        expect(confirm).toBeDisabled();
+
+        await user.selectOptions(screen.getByLabelText(/who was paid/i), 'Col1');
+        expect(confirm).toBeDisabled();
+
+        await user.selectOptions(screen.getByLabelText(/how much/i), 'Col2');
+        expect(confirm).toBeEnabled();
+      });
+
+      it('reads the file once the user has said which column is which', async () => {
+        const user = await upload(unfamiliarCsv);
+
+        await user.selectOptions(screen.getByLabelText(/who was paid/i), 'Col1');
+        await user.selectOptions(screen.getByLabelText(/how much/i), 'Col2');
+        await user.click(screen.getByRole('button', { name: /read the file/i }));
+
+        expect(await screen.findByTestId('spend-summary')).toHaveTextContent(
+          /1 payee that looks like a tool/i,
+        );
+      });
+
+      it('lets a wrong guess be corrected without picking the file again', async () => {
+        const user = await upload(starlingCsv);
+        await screen.findByTestId('spend-summary');
+
+        await user.click(screen.getByRole('button', { name: /choose them yourself/i }));
+
+        // The guess is filled in, ready to be changed
+        expect(await screen.findByLabelText(/who was paid/i)).toHaveValue('Counter Party');
+
+        await user.selectOptions(screen.getByLabelText(/who was paid/i), 'Reference');
+        await user.click(screen.getByRole('button', { name: /read the file/i }));
+
+        expect(await screen.findByTestId('spend-summary')).toBeInTheDocument();
+      });
+
+      it('says which column is missing rather than failing vaguely', async () => {
+        const user = await upload(unfamiliarCsv);
+
+        await user.selectOptions(screen.getByLabelText(/who was paid/i), 'Col1');
+        await user.selectOptions(screen.getByLabelText(/how much/i), 'Col1');
+        await user.click(screen.getByRole('button', { name: /read the file/i }));
+
+        // Both mapped to the payee column, so nothing parses as an amount
+        expect(
+          await screen.findByText(/no rows with both a payee and an amount/i),
+        ).toBeInTheDocument();
+      });
+    });
+
     it('reassures the user the file stays in their browser', async () => {
       const user = userEvent.setup();
       render(<ImportDialog open onClose={vi.fn()} onImport={vi.fn()} onImportSpend={vi.fn()} />);
@@ -485,7 +589,9 @@ describe('ImportDialog', () => {
       expect(screen.getByRole('button', { name: /add 0 systems/i })).toBeDisabled();
     });
 
-    it('reports a file it cannot read', async () => {
+    it('asks about unfamiliar headers instead of rejecting the file', async () => {
+      // This used to be a dead end. A file whose headers we do not recognise
+      // is almost always a perfectly good file, so ask rather than refuse.
       const user = userEvent.setup();
       render(<ImportDialog open onClose={vi.fn()} onImport={vi.fn()} onImportSpend={vi.fn()} />);
       await user.click(screen.getByText(/accounting or bank export/i));
@@ -493,7 +599,18 @@ describe('ImportDialog', () => {
       const input = document.querySelector('input[type="file"]') as HTMLInputElement;
       await user.upload(input, createFile('foo,bar\n1,2\n', 'bad.csv', 'text/csv'));
 
-      expect(await screen.findByText(/payees or descriptions/i)).toBeInTheDocument();
+      expect(await screen.findByLabelText(/who was paid/i)).toBeInTheDocument();
+    });
+
+    it('reports a file with nothing in it', async () => {
+      const user = userEvent.setup();
+      render(<ImportDialog open onClose={vi.fn()} onImport={vi.fn()} onImportSpend={vi.fn()} />);
+      await user.click(screen.getByText(/accounting or bank export/i));
+
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+      await user.upload(input, createFile('Payee,Amount\n', 'empty.csv', 'text/csv'));
+
+      expect(await screen.findByText(/no rows in it/i)).toBeInTheDocument();
     });
   });
 });

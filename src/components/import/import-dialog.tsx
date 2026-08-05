@@ -3,13 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { validateArchitectureJson, parseCsvSystems, csvRowsToArchitecture } from '@/lib/import';
 import { previewCsvMerge } from '@/lib/import/csv-to-architecture';
-import { parseSpendCsv } from '@/lib/import/parse-spend';
+import { parseSpendCsv, inspectSpendCsv } from '@/lib/import/parse-spend';
+import { SpendColumnMapper } from './spend-column-mapper';
+import type { SpendColumnMapping, SpendFilePreview } from '@/lib/import/parse-spend';
 import { CsvPreviewTable } from './csv-preview-table';
 import { SpendPreviewTable } from './spend-preview-table';
 import type { Architecture } from '@/lib/types';
 import type { CsvSystemRow, SpendMatch } from '@/lib/import';
 
-type ImportStep = 'format' | 'file' | 'preview' | 'error';
+type ImportStep = 'format' | 'file' | 'columns' | 'preview' | 'error';
 type ImportFormat = 'json' | 'csv' | 'spend';
 
 export interface ImportDialogProps {
@@ -52,14 +54,25 @@ function ImportDialogContent({
   const [spendMatches, setSpendMatches] = useState<SpendMatch[]>([]);
   const [spendUnmatched, setSpendUnmatched] = useState<SpendMatch[]>([]);
   const [spendSelected, setSpendSelected] = useState<Set<string>>(new Set());
+  // Kept so the file can be re-read against a mapping without asking for it
+  // again — a user correcting a column should not have to pick the file twice.
+  const [spendText, setSpendText] = useState<string>('');
+  const [spendPreview, setSpendPreview] = useState<SpendFilePreview | null>(null);
   const [error, setError] = useState<ErrorState | null>(null);
 
   const dialogRef = useRef<HTMLDivElement>(null);
   const firstFocusableRef = useRef<HTMLButtonElement>(null);
+  const firstSelectRef = useRef<HTMLSelectElement>(null);
 
-  // Focus the first interactive element on open and whenever the step changes
+  // Focus the first interactive element on open and whenever the step changes.
+  // The column mapper opens on a select rather than a button, so it carries its
+  // own ref.
   useEffect(() => {
-    firstFocusableRef.current?.focus();
+    if (firstFocusableRef.current) {
+      firstFocusableRef.current.focus();
+      return;
+    }
+    firstSelectRef.current?.focus();
   }, [step]);
 
   // Escape key handler
@@ -106,6 +119,22 @@ function ImportDialogContent({
     setStep('file');
   }, []);
 
+  /** Read the file against a mapping, and show what came out of it. */
+  const readSpend = useCallback((text: string, mapping: SpendColumnMapping) => {
+    const result = parseSpendCsv(text, mapping);
+    if (!result.success) {
+      setError({ message: result.error });
+      setStep('error');
+      return;
+    }
+    setSpendMatches(result.matches);
+    setSpendUnmatched(result.unmatched);
+    // Recognised tools start ticked; guesses the user must opt into
+    setSpendSelected(new Set(result.matches.map((m) => m.originalPayee)));
+    setCsvWarnings(result.warnings);
+    setStep('preview');
+  }, []);
+
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -114,18 +143,25 @@ function ImportDialogContent({
       const text = await file.text();
 
       if (format === 'spend') {
-        const result = parseSpendCsv(text);
-        if (result.success) {
-          setSpendMatches(result.matches);
-          setSpendUnmatched(result.unmatched);
-          // Recognised tools start ticked; guesses the user must opt into
-          setSpendSelected(new Set(result.matches.map((m) => m.originalPayee)));
-          setCsvWarnings(result.warnings);
-          setStep('preview');
-        } else {
-          setError({ message: result.error });
+        setSpendText(text);
+        const inspected = inspectSpendCsv(text);
+        if (!inspected.success) {
+          setError({ message: inspected.error });
           setStep('error');
+          return;
         }
+
+        setSpendPreview(inspected.preview);
+        const { payee, amount } = inspected.preview.suggested;
+
+        // Nothing recognisable to go on: ask rather than fail, since the file
+        // is almost certainly fine and only its headers are unfamiliar.
+        if (!payee || !amount) {
+          setStep('columns');
+          return;
+        }
+
+        readSpend(text, inspected.preview.suggested as SpendColumnMapping);
         return;
       }
 
@@ -153,7 +189,7 @@ function ImportDialogContent({
         }
       }
     },
-    [format],
+    [format, readSpend],
   );
 
   const handleBack = useCallback(() => {
@@ -266,6 +302,15 @@ function ImportDialogContent({
             />
           )}
 
+          {step === 'columns' && spendPreview && (
+            <SpendColumnMapper
+              preview={spendPreview}
+              firstRef={firstSelectRef}
+              onConfirm={(mapping) => readSpend(spendText, mapping)}
+              onCancel={() => setStep('file')}
+            />
+          )}
+
           {step === 'preview' && format === 'spend' && (
             <SpendPreviewStep
               matches={spendMatches}
@@ -287,6 +332,7 @@ function ImportDialogContent({
                 onImportSpend?.(chosen);
               }}
               onCancel={onClose}
+              onChangeColumns={spendPreview ? () => setStep('columns') : undefined}
               firstRef={firstFocusableRef}
             />
           )}
@@ -489,6 +535,8 @@ interface SpendPreviewStepProps {
   onToggle: (originalPayee: string) => void;
   onImport: () => void;
   onCancel: () => void;
+  /** Offered when the file's columns are known, so a wrong guess is fixable. */
+  onChangeColumns?: () => void;
   firstRef: React.RefObject<HTMLButtonElement | null>;
 }
 
@@ -500,6 +548,7 @@ function SpendPreviewStep({
   onToggle,
   onImport,
   onCancel,
+  onChangeColumns,
   firstRef,
 }: SpendPreviewStepProps) {
   const chosen = selected.size;
@@ -511,6 +560,16 @@ function SpendPreviewStep({
         {matches.length === 1 ? 'payee that looks like a tool' : 'payees that look like tools'}
         {unmatched.length > 0 && `, and ${unmatched.length} it did not recognise`}.
       </p>
+
+      {onChangeColumns && (
+        <button
+          type="button"
+          onClick={onChangeColumns}
+          className="text-sm text-primary-600 underline hover:text-primary-800"
+        >
+          Reading the wrong columns? Choose them yourself
+        </button>
+      )}
 
       <SpendPreviewTable
         matches={matches}
