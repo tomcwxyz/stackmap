@@ -417,14 +417,85 @@ describe('ImportDialog', () => {
       return { user, onImportSpend };
     }
 
+    describe('filing imported tools under a function', () => {
+      it('suggests where each tool belongs', async () => {
+        await uploadSpend();
+
+        expect(await screen.findByLabelText(/what Xero is for/i)).toHaveValue('finance');
+      });
+
+      it('says which functions will be added, rather than surprising the user', async () => {
+        await uploadSpend();
+
+        expect(await screen.findByTestId('spend-new-functions')).toHaveTextContent(/Finance/);
+      });
+
+      it('offers the likely functions first, then the rest', async () => {
+        await uploadSpend();
+
+        const select = await screen.findByLabelText(/what Xero is for/i);
+        const options = within(select).getAllByRole('option').map((o) => o.textContent);
+        expect(options[0]).toBe('Finance');
+        expect(options).toContain('Governance');
+        expect(options[options.length - 1]).toBe('Not sure yet');
+      });
+
+      it('passes the user’s choice on rather than its own guess', async () => {
+        const { user, onImportSpend } = await uploadSpend();
+        await screen.findByTestId('spend-summary');
+
+        await user.selectOptions(screen.getByLabelText(/what Xero is for/i), 'operations');
+        await user.click(screen.getByRole('button', { name: /add 1 system/i }));
+
+        expect(onImportSpend).toHaveBeenCalledWith(expect.anything(), {
+          'XERO LIMITED': 'operations',
+        });
+      });
+
+      it('lets a tool be left unfiled', async () => {
+        const { user, onImportSpend } = await uploadSpend();
+        await screen.findByTestId('spend-summary');
+
+        await user.selectOptions(screen.getByLabelText(/what Xero is for/i), 'none');
+        expect(screen.queryByTestId('spend-new-functions')).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: /add 1 system/i }));
+        expect(onImportSpend).toHaveBeenCalledWith(expect.anything(), {
+          'XERO LIMITED': 'none',
+        });
+      });
+
+      it('does not offer to add a function the map already has', async () => {
+        const user = userEvent.setup();
+        const arch = makeValidArchitecture();
+        render(
+          <ImportDialog
+            open
+            mode="merge"
+            onClose={vi.fn()}
+            onImport={vi.fn()}
+            onImportSpend={vi.fn()}
+            existingArchitecture={arch}
+          />,
+        );
+        await user.click(screen.getByText(/accounting or bank export/i));
+        const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+        await user.upload(input, createFile(spendCsv, 'spend.csv', 'text/csv'));
+
+        await screen.findByTestId('spend-summary');
+        // The fixture already has a Finance function
+        expect(screen.queryByTestId('spend-new-functions')).not.toBeInTheDocument();
+      });
+    });
+
     describe('choosing the columns', () => {
       // A real Starling export. Not one of these headers is a name the
       // importer was originally written to look for.
       const starlingCsv = [
         'Date,Counter Party,Reference,Type,Amount (GBP),Balance (GBP)',
-        '02/05/2026,Google Cloud,Google Workspace_good-,CARD SUBSCRIPTION,-26.08,1101.78',
-        '02/06/2026,Google Cloud,Google Workspace_good-,CARD SUBSCRIPTION,-26.08,2025.86',
-        '02/07/2026,Google Cloud,Google Workspace_good-,CARD SUBSCRIPTION,-26.08,5338.98',
+        '02/05/2026,Supabase,SUPABASE_good-,CARD SUBSCRIPTION,-26.08,1101.78',
+        '02/06/2026,Supabase,SUPABASE_good-,CARD SUBSCRIPTION,-26.08,2025.86',
+        '02/07/2026,Supabase,SUPABASE_good-,CARD SUBSCRIPTION,-26.08,5338.98',
       ].join('\n');
 
       const unfamiliarCsv = ['Col1,Col2', 'Xero,33.00', 'Xero,33.00'].join('\n');

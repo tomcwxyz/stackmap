@@ -337,9 +337,9 @@ describe('inspectSpendCsv', () => {
 describe('parseSpendCsv with a column mapping', () => {
   const starling = [
     'Date,Counter Party,Reference,Type,Amount (GBP),Balance (GBP)',
-    '02/05/2026,Google Cloud,Google Workspace_good-,CARD SUBSCRIPTION,-26.08,1101.78',
-    '02/06/2026,Google Cloud,Google Workspace_good-,CARD SUBSCRIPTION,-26.08,2025.86',
-    '02/07/2026,Google Cloud,Google Workspace_good-,CARD SUBSCRIPTION,-26.08,5338.98',
+    '02/05/2026,Supabase,SUPABASE_good-,CARD SUBSCRIPTION,-26.08,1101.78',
+    '02/06/2026,Supabase,SUPABASE_good-,CARD SUBSCRIPTION,-26.08,2025.86',
+    '02/07/2026,Supabase,SUPABASE_good-,CARD SUBSCRIPTION,-26.08,5338.98',
   ].join('\n');
 
   it('reads a Starling export without being told anything', () => {
@@ -347,7 +347,7 @@ describe('parseSpendCsv with a column mapping', () => {
 
     expect(result.success).toBe(true);
     if (!result.success) return;
-    expect(result.matches[0].payee).toBe('Google Cloud');
+    expect(result.matches[0].payee).toBe('Supabase');
     expect(result.matches[0].transactions).toBe(3);
   });
 
@@ -369,7 +369,7 @@ describe('parseSpendCsv with a column mapping', () => {
 
     expect(result.success).toBe(true);
     if (!result.success) return;
-    expect(result.matches[0].originalPayee).toBe('Google Workspace_good-');
+    expect(result.matches[0].originalPayee).toBe('SUPABASE_good-');
   });
 
   it('treats a chosen debit column as money out, negative or not', () => {

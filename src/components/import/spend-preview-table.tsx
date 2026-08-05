@@ -1,7 +1,12 @@
 'use client';
 
 import { formatCurrency } from '@/lib/cost-analysis';
+import { standardFunctionName } from '@/lib/import/suggest-function';
+import { suggestFunctionForMatch } from '@/lib/import/spend-to-systems';
+import { STANDARD_FUNCTIONS } from '@/lib/functions';
 import type { SpendCadence, SpendMatch } from '@/lib/import/parse-spend';
+import type { FunctionAssignments } from '@/lib/import/spend-to-systems';
+import type { StandardFunction } from '@/lib/types';
 
 const CADENCE_LABELS: Record<SpendCadence, string> = {
   monthly: 'Monthly',
@@ -17,6 +22,9 @@ export interface SpendPreviewTableProps {
   onToggle: (originalPayee: string) => void;
   /** Heading for this group of rows. */
   caption: string;
+  /** What the user has chosen for each payee, where they have chosen. */
+  assignments: FunctionAssignments;
+  onAssign: (originalPayee: string, value: StandardFunction | 'none') => void;
 }
 
 /**
@@ -31,6 +39,8 @@ export function SpendPreviewTable({
   selected,
   onToggle,
   caption,
+  assignments,
+  onAssign,
 }: SpendPreviewTableProps) {
   if (matches.length === 0) return null;
 
@@ -48,7 +58,8 @@ export function SpendPreviewTable({
             <th scope="col" className="py-1.5 pr-2">Payee</th>
             <th scope="col" className="py-1.5 pr-2">Looks like</th>
             <th scope="col" className="py-1.5 pr-2">Payments</th>
-            <th scope="col" className="py-1.5">A year costs</th>
+            <th scope="col" className="py-1.5 pr-2">A year costs</th>
+            <th scope="col" className="py-1.5">Belongs to</th>
           </tr>
         </thead>
         <tbody>
@@ -75,8 +86,15 @@ export function SpendPreviewTable({
               <td className="py-1.5 pr-2 text-primary-700">
                 {match.transactions} · {CADENCE_LABELS[match.cadence]}
               </td>
-              <td className="py-1.5 text-primary-900 font-medium">
+              <td className="py-1.5 pr-2 text-primary-900 font-medium">
                 {formatCurrency(match.estimatedAnnualCost)}
+              </td>
+              <td className="py-1.5">
+                <FunctionPicker
+                  match={match}
+                  assignments={assignments}
+                  onAssign={onAssign}
+                />
               </td>
             </tr>
           ))}
@@ -85,3 +103,51 @@ export function SpendPreviewTable({
     </div>
   );
 }
+
+/**
+ * Where an imported system will be filed.
+ *
+ * Imported systems used to arrive attached to nothing, which left them in an
+ * "Other systems" bucket that most people then fixed by adding the tool a
+ * second time through the wizard. A guess shown here, changeable in one click,
+ * is worth much more than no guess at all.
+ */
+function FunctionPicker({
+  match,
+  assignments,
+  onAssign,
+}: {
+  match: SpendMatch;
+  assignments: FunctionAssignments;
+  onAssign: (originalPayee: string, value: StandardFunction | 'none') => void;
+}) {
+  const name = match.tool?.name ?? match.payee;
+  // The same call the import makes, so the picker cannot show one answer
+  // and the map end up with another
+  const { suggested, candidates } = suggestFunctionForMatch(match);
+  const value = assignments[match.originalPayee] ?? suggested ?? 'none';
+
+  // Whatever the tool points at first, then everything else, so the likely
+  // answers are not buried among eight alphabetical ones.
+  const ordered = [
+    ...candidates,
+    ...STANDARD_FUNCTIONS.map((fn) => fn.type).filter((type) => !candidates.includes(type)),
+  ];
+
+  return (
+    <select
+      value={value}
+      onChange={(e) => onAssign(match.originalPayee, e.target.value as StandardFunction | 'none')}
+      aria-label={`What ${name} is for`}
+      className="rounded border border-surface-300 bg-white px-1.5 py-1 text-xs text-primary-900 focus:ring-2 focus:ring-primary-500"
+    >
+      {ordered.map((type) => (
+        <option key={type} value={type}>
+          {standardFunctionName(type)}
+        </option>
+      ))}
+      <option value="none">Not sure yet</option>
+    </select>
+  );
+}
+

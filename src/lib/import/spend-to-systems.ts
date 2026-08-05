@@ -1,5 +1,13 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { Architecture, System, SystemType } from '@/lib/types';
+import type {
+  Architecture,
+  OrgFunction,
+  StandardFunction,
+  System,
+  SystemType,
+} from '@/lib/types';
+import { suggestFunction, standardFunctionName } from './suggest-function';
+import type { FunctionSuggestion } from './suggest-function';
 import type { SpendMatch } from './parse-spend';
 
 /** Known tool categories mapped onto the system types the wizard uses. */
@@ -25,6 +33,22 @@ function typeFor(match: SpendMatch): SystemType {
   return CATEGORY_TO_TYPE[match.tool.category] ?? 'other';
 }
 
+/**
+ * Where a spend row would be filed if the user changes nothing.
+ *
+ * The one place this is worked out. The preview and the import used to call
+ * `suggestFunction` separately with different arguments, so a Slack payment
+ * was shown as People and then filed under Operations — the picker had no
+ * system type to break the tie with.
+ */
+export function suggestFunctionForMatch(match: SpendMatch): FunctionSuggestion {
+  return suggestFunction(
+    match.tool?.name ?? match.payee,
+    typeFor(match),
+    match.tool?.category,
+  );
+}
+
 /** Systems are matched by name, ignoring case and surrounding whitespace. */
 function matchKey(name: string): string {
   return name.trim().toLowerCase();
@@ -34,6 +58,68 @@ export interface SpendImportResult {
   architecture: Architecture;
   added: number;
   updated: number;
+  /** Functions that had to be created to hold the imported systems. */
+  functionsCreated: string[];
+}
+
+/**
+ * Which part of the organisation each imported system belongs to, keyed by the
+ * payee text as it appeared in the file.
+ *
+ * `'none'` means the user chose to leave it unattached. A payee that is absent
+ * falls back to whatever the suggestion is.
+ */
+export type FunctionAssignments = Record<string, StandardFunction | 'none'>;
+
+/**
+ * Find the function to hang a system on, creating it if the map has none.
+ *
+ * A map built by importing spend before touching the wizard has no functions
+ * at all, so refusing to create them would leave every imported system in the
+ * same "Other systems" bucket this is meant to empty. Creating one is visible
+ * in the preview and undone by unpicking it there.
+ */
+function resolveFunction(
+  type: StandardFunction,
+  functions: OrgFunction[],
+  created: string[],
+): string {
+  const existing = functions.find((fn) => fn.type === type);
+  if (existing) return existing.id;
+
+  const fn: OrgFunction = {
+    id: uuidv4(),
+    name: standardFunctionName(type),
+    type,
+    isActive: true,
+  };
+  functions.push(fn);
+  created.push(fn.name);
+  return fn.id;
+}
+
+/**
+ * The function a match should be filed under, honouring the user's choice.
+ *
+ * Returns undefined when there is nothing sensible to suggest, or the user
+ * asked for it to be left unattached.
+ */
+function functionIdFor(
+  match: SpendMatch,
+  sourcePayees: string[],
+  functions: OrgFunction[],
+  created: string[],
+  assignments: FunctionAssignments,
+): string | undefined {
+  // The user chose against a row as it was shown, before consolidation merged
+  // it with another; the first explicit choice among those rows wins.
+  const chosen = sourcePayees.map((payee) => assignments[payee]).find(Boolean);
+  if (chosen === 'none') return undefined;
+
+  const target = chosen ?? suggestFunctionForMatch(match).suggested;
+  if (!target) return undefined;
+
+  return resolveFunction(target, functions, created);
 }
 
 /**
@@ -44,26 +130,39 @@ export interface SpendImportResult {
  * Left separate, the first would create the system and the second would find
  * it already there, so half the money would go missing.
  */
-function consolidate(matches: SpendMatch[]): SpendMatch[] {
-  const byTarget = new Map<string, SpendMatch>();
+interface ConsolidatedMatch {
+  match: SpendMatch;
+  /**
+   * The payees this was built from. Consolidating rewrites `originalPayee` to
+   * a combined string, which is no longer a key the preview stored a choice
+   * under, so the originals have to be carried along to find it again.
+   */
+  sourcePayees: string[];
+}
+
+function consolidate(matches: SpendMatch[]): ConsolidatedMatch[] {
+  const byTarget = new Map<string, ConsolidatedMatch>();
 
   for (const match of matches) {
     const key = matchKey(match.tool?.name ?? match.payee);
     const current = byTarget.get(key);
 
     if (!current) {
-      byTarget.set(key, { ...match });
+      byTarget.set(key, { match: { ...match }, sourcePayees: [match.originalPayee] });
       continue;
     }
 
     byTarget.set(key, {
-      ...current,
-      estimatedAnnualCost: current.estimatedAnnualCost + match.estimatedAnnualCost,
-      totalAmount: current.totalAmount + match.totalAmount,
-      transactions: current.transactions + match.transactions,
-      // Both descriptors are worth keeping: the note is how a user works out
-      // which line on their statement a system came from.
-      originalPayee: `${current.originalPayee}, ${match.originalPayee}`,
+      match: {
+        ...current.match,
+        estimatedAnnualCost: current.match.estimatedAnnualCost + match.estimatedAnnualCost,
+        totalAmount: current.match.totalAmount + match.totalAmount,
+        transactions: current.match.transactions + match.transactions,
+        // Both descriptors are worth keeping: the note is how a user works out
+        // which line on their statement a system came from.
+        originalPayee: `${current.match.originalPayee}, ${match.originalPayee}`,
+      },
+      sourcePayees: [...current.sourcePayees, match.originalPayee],
     });
   }
 
@@ -80,14 +179,17 @@ function consolidate(matches: SpendMatch[]): SpendMatch[] {
 export function addSpendToArchitecture(
   matches: SpendMatch[],
   existing: Architecture,
+  assignments: FunctionAssignments = {},
 ): SpendImportResult {
   const systems = existing.systems.map((s) => ({ ...s }));
+  const functions = existing.functions.map((f) => ({ ...f }));
   const byName = new Map(systems.map((s) => [matchKey(s.name), s]));
 
   let added = 0;
   let updated = 0;
+  const functionsCreated: string[] = [];
 
-  for (const match of consolidate(matches)) {
+  for (const { match, sourcePayees } of consolidate(matches)) {
     const name = match.tool?.name ?? match.payee;
     const key = matchKey(name);
     const cost: System['cost'] = {
@@ -106,6 +208,17 @@ export function addSpendToArchitecture(
       if (!current.cost || current.cost.source === 'estimate' || current.cost.source === 'spend') {
         current.cost = cost;
       }
+      // An existing system already sits somewhere; only fill in a blank
+      if (current.functionIds.length === 0) {
+        const functionId = functionIdFor(
+          match,
+          sourcePayees,
+          functions,
+          functionsCreated,
+          assignments,
+        );
+        if (functionId) current.functionIds = [functionId];
+      }
       current.vendor ??= match.tool?.provider;
       current.techFreedomScore ??= match.tool
         ? { ...match.tool.score, isAutoScored: true }
@@ -114,14 +227,17 @@ export function addSpendToArchitecture(
       continue;
     }
 
+    const type = typeFor(match);
+    const functionId = functionIdFor(match, sourcePayees, functions, functionsCreated, assignments);
+
     const system: System = {
       id: uuidv4(),
       name,
-      type: typeFor(match),
+      type,
       vendor: match.tool?.provider,
       hosting: match.tool ? 'cloud' : 'unknown',
       status: 'active',
-      functionIds: [],
+      functionIds: functionId ? [functionId] : [],
       serviceIds: [],
       cost,
       notes: `Found in spend: ${match.transactions} payment${match.transactions === 1 ? '' : 's'} to "${match.originalPayee}".`,
@@ -139,9 +255,11 @@ export function addSpendToArchitecture(
     architecture: {
       ...existing,
       organisation: { ...existing.organisation, updatedAt: new Date().toISOString() },
+      functions,
       systems,
     },
     added,
     updated,
+    functionsCreated,
   };
 }

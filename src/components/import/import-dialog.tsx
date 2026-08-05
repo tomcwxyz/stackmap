@@ -6,9 +6,13 @@ import { previewCsvMerge } from '@/lib/import/csv-to-architecture';
 import { parseSpendCsv, inspectSpendCsv } from '@/lib/import/parse-spend';
 import { SpendColumnMapper } from './spend-column-mapper';
 import type { SpendColumnMapping, SpendFilePreview } from '@/lib/import/parse-spend';
+import type { FunctionAssignments } from '@/lib/import/spend-to-systems';
+import type { StandardFunction } from '@/lib/types';
 import { CsvPreviewTable } from './csv-preview-table';
 import { SpendPreviewTable } from './spend-preview-table';
-import type { Architecture } from '@/lib/types';
+import { standardFunctionName } from '@/lib/import/suggest-function';
+import { suggestFunctionForMatch } from '@/lib/import/spend-to-systems';
+import type { Architecture, OrgFunction } from '@/lib/types';
 import type { CsvSystemRow, SpendMatch } from '@/lib/import';
 
 type ImportStep = 'format' | 'file' | 'columns' | 'preview' | 'error';
@@ -21,7 +25,7 @@ export interface ImportDialogProps {
   onImport: (arch: Architecture) => void;
   onMergeCsv?: (rows: CsvSystemRow[]) => void;
   /** Called with the spend rows the user confirmed. */
-  onImportSpend?: (matches: SpendMatch[]) => void;
+  onImportSpend?: (matches: SpendMatch[], assignments: FunctionAssignments) => void;
   /** The map being merged into, used to preview what a merge would change. */
   existingArchitecture?: Architecture | null;
 }
@@ -58,6 +62,8 @@ function ImportDialogContent({
   // again — a user correcting a column should not have to pick the file twice.
   const [spendText, setSpendText] = useState<string>('');
   const [spendPreview, setSpendPreview] = useState<SpendFilePreview | null>(null);
+  // Only what the user has changed; anything absent uses the suggestion
+  const [spendAssignments, setSpendAssignments] = useState<FunctionAssignments>({});
   const [error, setError] = useState<ErrorState | null>(null);
 
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -131,6 +137,7 @@ function ImportDialogContent({
     setSpendUnmatched(result.unmatched);
     // Recognised tools start ticked; guesses the user must opt into
     setSpendSelected(new Set(result.matches.map((m) => m.originalPayee)));
+    setSpendAssignments({});
     setCsvWarnings(result.warnings);
     setStep('preview');
   }, []);
@@ -317,6 +324,10 @@ function ImportDialogContent({
               unmatched={spendUnmatched}
               warnings={csvWarnings}
               selected={spendSelected}
+              assignments={spendAssignments}
+              onAssign={(payee, value) =>
+                setSpendAssignments((prev) => ({ ...prev, [payee]: value }))
+              }
               onToggle={(payee) =>
                 setSpendSelected((prev) => {
                   const next = new Set(prev);
@@ -329,10 +340,11 @@ function ImportDialogContent({
                 const chosen = [...spendMatches, ...spendUnmatched].filter((m) =>
                   spendSelected.has(m.originalPayee),
                 );
-                onImportSpend?.(chosen);
+                onImportSpend?.(chosen, spendAssignments);
               }}
               onCancel={onClose}
               onChangeColumns={spendPreview ? () => setStep('columns') : undefined}
+              existingFunctions={existingArchitecture?.functions ?? []}
               firstRef={firstFocusableRef}
             />
           )}
@@ -533,10 +545,14 @@ interface SpendPreviewStepProps {
   warnings: string[];
   selected: Set<string>;
   onToggle: (originalPayee: string) => void;
+  assignments: FunctionAssignments;
+  onAssign: (originalPayee: string, value: StandardFunction | 'none') => void;
   onImport: () => void;
   onCancel: () => void;
   /** Offered when the file's columns are known, so a wrong guess is fixable. */
   onChangeColumns?: () => void;
+  /** Functions the map already has, so new ones can be called out. */
+  existingFunctions: OrgFunction[];
   firstRef: React.RefObject<HTMLButtonElement | null>;
 }
 
@@ -546,12 +562,29 @@ function SpendPreviewStep({
   warnings,
   selected,
   onToggle,
+  assignments,
+  onAssign,
   onImport,
   onCancel,
   onChangeColumns,
+  existingFunctions,
   firstRef,
 }: SpendPreviewStepProps) {
   const chosen = selected.size;
+
+  // Filing a system somewhere may mean creating that somewhere. Say so here
+  // rather than letting functions appear on the map unannounced.
+  const willCreate = [...new Set(
+    [...matches, ...unmatched]
+      .filter((m) => selected.has(m.originalPayee))
+      .map((m) => {
+        const choice = assignments[m.originalPayee];
+        if (choice === 'none') return undefined;
+        return choice ?? suggestFunctionForMatch(m).suggested;
+      })
+      .filter((type): type is StandardFunction => Boolean(type))
+      .filter((type) => !existingFunctions.some((fn) => fn.type === type)),
+  )].map(standardFunctionName);
 
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto">
@@ -575,6 +608,8 @@ function SpendPreviewStep({
         matches={matches}
         selected={selected}
         onToggle={onToggle}
+        assignments={assignments}
+        onAssign={onAssign}
         caption="Tools Stackmap recognised"
       />
 
@@ -591,9 +626,17 @@ function SpendPreviewStep({
             matches={unmatched}
             selected={selected}
             onToggle={onToggle}
+            assignments={assignments}
+            onAssign={onAssign}
             caption="Other payees"
           />
         </details>
+      )}
+
+      {willCreate.length > 0 && (
+        <p className="text-sm text-primary-700" data-testid="spend-new-functions">
+          {willCreate.join(', ')} will be added to your map, so these have somewhere to sit.
+        </p>
       )}
 
       {warnings.length > 0 && (
@@ -673,6 +716,7 @@ function CsvPreviewStep({
         </p>
       )}
       <CsvPreviewTable rows={rows} onChange={onChange} />
+
       {warnings.length > 0 && (
         <ul className="text-sm text-amber-700">
           {warnings.map((w, i) => (

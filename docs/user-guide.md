@@ -620,11 +620,42 @@ browser — the file is never uploaded anywhere.
 - Works out how often you pay — monthly, quarterly, yearly — and what that comes to
   over a year
 
+### What it will not guess
+
+A payee that names only a vendor — `AMAZON`, `GOOGLE`, `MICROSOFT` — is left
+unrecognised, because the brand says nothing about which of their products the
+payment was for. It appears in the list below for you to tick and name if it is
+software. Where a vendor sells only one thing Stackmap knows about, such as
+Anthropic, the product is named as usual.
+
+Statement shorthand is understood: `GOOGLE *GSUITE_yourorg` is recognised as
+Google Workspace even though the words "Google Workspace" never appear.
+
 ### What you confirm
 
 Nothing is added until you tick it. Tools Stackmap recognises are ticked for you.
 Payees it does not recognise are listed separately and left unticked — some will be
 software it has not heard of, most will be rent, salaries and suppliers.
+
+### Where each tool ends up
+
+Every row has a **Belongs to** column: the part of the organisation the tool will be
+filed under. Stackmap fills it in from the same lists the wizard suggests from — if
+the Finance step offers Xero, then Xero is Finance — and falls back to the kind of
+system it is when a tool is not on those lists.
+
+Change any of them from the dropdown. The likely answers are listed first, then the
+rest, and **Not sure yet** leaves a tool unfiled if you would rather decide later.
+
+If a tool needs a function your map does not have yet, Stackmap says so before you
+import — *Finance, Operations will be added to your map* — and adds it. This is what
+stops imported tools sitting in an "Other systems" bucket, which used to mean adding
+the same tool a second time through the wizard.
+
+!!! note
+    A tool used right across the organisation, such as an AI assistant or a
+    spreadsheet, is filed under Operations. Any single answer there is a guess —
+    the dropdown lists everywhere it might plausibly belong.
 
 ### Costs
 

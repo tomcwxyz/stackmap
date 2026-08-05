@@ -77,6 +77,7 @@ const SUGGESTIONS: Record<StandardFunction, SuggestionEntry[]> = {
   communications: [
     { name: 'Mailchimp', description: 'Email marketing and newsletters' },
     { name: 'Brevo', description: 'EU-based email marketing alternative' },
+    { name: 'Resend', description: 'Sends the email your systems generate — receipts, resets, alerts' },
     { name: 'Listmonk', description: 'Free self-hosted email (privacy-first)', orgTypes: ['cooperative'] },
     { name: 'Canva', description: 'Design tool for social and print' },
     { name: 'Penpot', description: 'Free open-source design tool', orgTypes: ['cooperative'] },
@@ -133,6 +134,7 @@ const SUGGESTIONS: Record<StandardFunction, SuggestionEntry[]> = {
     { name: 'Monday.com', description: 'Visual project management' },
     { name: 'Todoist', description: 'Simple task management', sizes: ['micro', 'small'] },
     { name: 'Nextcloud', description: 'Self-hosted files and collaboration', orgTypes: ['cooperative'] },
+    { name: 'DigitalOcean', description: 'Servers and managed databases behind your own tools' },
     { name: 'Zapier', description: 'Automate workflows between tools' },
     { name: 'Make', description: 'EU-based workflow automation' },
     { name: 'ChatGPT', description: 'AI assistant for everyday tasks' },
@@ -187,3 +189,30 @@ export function getSuggestedSystems(
     })
     .map(({ name, description }) => ({ name, description }));
 }
+
+/**
+ * Which functions suggest a given tool, best first.
+ *
+ * The inverse of the suggestion lists above, built once. A tool can belong to
+ * several — Slack is offered under both People and Operations — so this
+ * returns all of them rather than picking, and leaves the choosing to whoever
+ * has more context.
+ */
+const SUGGESTED_BY = new Map<string, StandardFunction[]>();
+
+for (const [functionType, entries] of Object.entries(SUGGESTIONS) as [
+  StandardFunction,
+  SuggestionEntry[],
+][]) {
+  for (const entry of entries) {
+    const key = entry.name.trim().toLowerCase();
+    const current = SUGGESTED_BY.get(key) ?? [];
+    if (!current.includes(functionType)) current.push(functionType);
+    SUGGESTED_BY.set(key, current);
+  }
+}
+
+export function getFunctionsSuggesting(systemName: string): StandardFunction[] {
+  return SUGGESTED_BY.get(systemName.trim().toLowerCase()) ?? [];
+}
+
