@@ -269,3 +269,58 @@ describe('FunctionPicker', () => {
     });
   });
 });
+
+describe('revisiting the step', () => {
+  // Systems point at functions by id. Recreating a function the user never
+  // touched hands it a new id and silently detaches everything filed under
+  // it, so the whole map lands in "Other systems".
+  const existing = [
+    { id: 'fn-finance', name: 'Finance', type: 'finance' as const, isActive: true },
+    { id: 'fn-custom', name: 'Fleet', type: 'custom' as const, isActive: true },
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockContextValue.architecture!.functions = existing;
+  });
+
+  afterEach(() => {
+    mockContextValue.architecture!.functions = [];
+  });
+
+  it('leaves an unchanged function exactly as it was', async () => {
+    const user = userEvent.setup();
+    render(<FunctionPicker />);
+
+    await user.click(screen.getByRole('button', { name: /^continue$/i }));
+
+    expect(removeFunctionMock).not.toHaveBeenCalled();
+    expect(addFunctionMock).not.toHaveBeenCalled();
+  });
+
+  it('removes only what was deselected', async () => {
+    const user = userEvent.setup();
+    render(<FunctionPicker />);
+
+    await user.click(screen.getByRole('checkbox', { name: /finance/i }));
+    await user.click(screen.getByRole('button', { name: /^continue$/i }));
+
+    expect(removeFunctionMock).toHaveBeenCalledTimes(1);
+    expect(removeFunctionMock).toHaveBeenCalledWith('fn-finance');
+  });
+
+  it('adds only what is genuinely new', async () => {
+    const user = userEvent.setup();
+    render(<FunctionPicker />);
+
+    await user.click(screen.getByRole('checkbox', { name: /governance/i }));
+    await user.click(screen.getByRole('button', { name: /^continue$/i }));
+
+    expect(addFunctionMock).toHaveBeenCalledTimes(1);
+    expect(addFunctionMock).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'governance' }),
+    );
+    expect(removeFunctionMock).not.toHaveBeenCalled();
+  });
+});
+

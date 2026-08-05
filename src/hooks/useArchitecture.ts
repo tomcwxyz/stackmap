@@ -304,6 +304,19 @@ export function ArchitectureProvider({
       updateArch((prev) => ({
         ...prev,
         functions: prev.functions.filter((f) => f.id !== id),
+        // A reference to a function that no longer exists is not a grouping,
+        // it is an invisible orphan: the system vanishes from the diagram's
+        // subgraphs and turns up under "Other systems" with no explanation.
+        systems: prev.systems.map((s) =>
+          s.functionIds.includes(id)
+            ? { ...s, functionIds: s.functionIds.filter((fId) => fId !== id) }
+            : s,
+        ),
+        services: prev.services.map((svc) =>
+          svc.functionIds.includes(id)
+            ? { ...svc, functionIds: svc.functionIds.filter((fId) => fId !== id) }
+            : svc,
+        ),
       }));
     },
     [updateArch],
@@ -337,6 +350,11 @@ export function ArchitectureProvider({
     (id: string) => {
       updateArch((prev) => ({
         ...prev,
+        systems: prev.systems.map((s) =>
+          s.serviceIds.includes(id)
+            ? { ...s, serviceIds: s.serviceIds.filter((sId) => sId !== id) }
+            : s,
+        ),
         services: prev.services.filter((s) => s.id !== id),
       }));
     },

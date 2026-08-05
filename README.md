@@ -3,7 +3,7 @@
 **Lightweight architecture mapping for social purpose organisations.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-1140%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-1146%20passing-brightgreen.svg)]()
 [![WCAG 2.1 AA](https://img.shields.io/badge/accessibility-WCAG%202.1%20AA-blue.svg)]()
 
 ---
@@ -130,7 +130,7 @@ npm run typecheck     # TypeScript type checking
 
 ### Testing
 
-Stackmap follows a strict TDD workflow (red, green, refactor). The test suite currently includes **1140 tests across 84 test files**.
+Stackmap follows a strict TDD workflow (red, green, refactor). The test suite currently includes **1146 tests across 84 test files**.
 
 Every component test includes an accessibility check using jest-axe:
 
