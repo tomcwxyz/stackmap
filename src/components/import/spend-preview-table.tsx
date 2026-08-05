@@ -1,7 +1,8 @@
 'use client';
 
 import { formatCurrency } from '@/lib/cost-analysis';
-import { suggestFunction, standardFunctionName } from '@/lib/import/suggest-function';
+import { standardFunctionName } from '@/lib/import/suggest-function';
+import { suggestFunctionForMatch } from '@/lib/import/spend-to-systems';
 import { STANDARD_FUNCTIONS } from '@/lib/functions';
 import type { SpendCadence, SpendMatch } from '@/lib/import/parse-spend';
 import type { FunctionAssignments } from '@/lib/import/spend-to-systems';
@@ -121,7 +122,9 @@ function FunctionPicker({
   onAssign: (originalPayee: string, value: StandardFunction | 'none') => void;
 }) {
   const name = match.tool?.name ?? match.payee;
-  const { suggested, candidates } = suggestFunction(name, undefined, match.tool?.category);
+  // The same call the import makes, so the picker cannot show one answer
+  // and the map end up with another
+  const { suggested, candidates } = suggestFunctionForMatch(match);
   const value = assignments[match.originalPayee] ?? suggested ?? 'none';
 
   // Whatever the tool points at first, then everything else, so the likely

@@ -10,7 +10,8 @@ import type { FunctionAssignments } from '@/lib/import/spend-to-systems';
 import type { StandardFunction } from '@/lib/types';
 import { CsvPreviewTable } from './csv-preview-table';
 import { SpendPreviewTable } from './spend-preview-table';
-import { suggestFunction, standardFunctionName } from '@/lib/import/suggest-function';
+import { standardFunctionName } from '@/lib/import/suggest-function';
+import { suggestFunctionForMatch } from '@/lib/import/spend-to-systems';
 import type { Architecture, OrgFunction } from '@/lib/types';
 import type { CsvSystemRow, SpendMatch } from '@/lib/import';
 
@@ -579,7 +580,7 @@ function SpendPreviewStep({
       .map((m) => {
         const choice = assignments[m.originalPayee];
         if (choice === 'none') return undefined;
-        return choice ?? suggestFunction(m.tool?.name ?? m.payee, undefined, m.tool?.category).suggested;
+        return choice ?? suggestFunctionForMatch(m).suggested;
       })
       .filter((type): type is StandardFunction => Boolean(type))
       .filter((type) => !existingFunctions.some((fn) => fn.type === type)),

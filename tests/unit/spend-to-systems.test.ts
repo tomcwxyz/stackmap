@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { addSpendToArchitecture } from '@/lib/import/spend-to-systems';
+import { addSpendToArchitecture, suggestFunctionForMatch } from '@/lib/import/spend-to-systems';
 import type { SpendMatch } from '@/lib/import/parse-spend';
 import type { Architecture, System } from '@/lib/types';
 import { KNOWN_TOOLS } from '@/lib/techfreedom/tools';
@@ -239,6 +239,62 @@ describe('addSpendToArchitecture', () => {
       );
 
       expect(result.architecture.systems).toHaveLength(2);
+    });
+  });
+
+  describe('the guess shown and the guess used', () => {
+    const slackTool = KNOWN_TOOLS.find((t) => t.name === 'Slack')!;
+
+    it('offers the same answer the import will act on', () => {
+      // The preview used to call the suggestion without a system type, so a
+      // Slack payment was shown as People and then filed under Operations
+      const slack = match({ payee: 'SLACK', originalPayee: 'SLACK.COM', tool: slackTool });
+
+      const shown = suggestFunctionForMatch(slack).suggested;
+      const used = addSpendToArchitecture([slack], architecture());
+      const filed = used.architecture.functions.find(
+        (f) => f.id === used.architecture.systems[0].functionIds[0],
+      );
+
+      expect(filed?.type).toBe(shown);
+    });
+  });
+
+  describe('a choice made against a payee that gets consolidated', () => {
+    // Consolidating rewrites originalPayee to a combined string, which is no
+    // longer the key the preview stored the choice under
+    const twoStreams = [
+      match({ payee: 'XERO', originalPayee: 'XERO LIMITED' }),
+      match({ payee: 'XERO PAYROLL', originalPayee: 'XERO PAYROLL 4471' }),
+    ];
+
+    it('honours a function chosen against either row', () => {
+      const result = addSpendToArchitecture(twoStreams, architecture(), {
+        'XERO PAYROLL 4471': 'operations',
+      });
+
+      const filed = result.architecture.functions.find(
+        (f) => f.id === result.architecture.systems[0].functionIds[0],
+      );
+      expect(filed?.type).toBe('operations');
+    });
+
+    it('honours "not sure yet" chosen against either row', () => {
+      const result = addSpendToArchitecture(twoStreams, architecture(), {
+        'XERO LIMITED': 'none',
+      });
+
+      expect(result.architecture.systems[0].functionIds).toEqual([]);
+      expect(result.functionsCreated).toEqual([]);
+    });
+
+    it('falls back to the suggestion when neither row was changed', () => {
+      const result = addSpendToArchitecture(twoStreams, architecture());
+
+      const filed = result.architecture.functions.find(
+        (f) => f.id === result.architecture.systems[0].functionIds[0],
+      );
+      expect(filed?.type).toBe('finance');
     });
   });
 
