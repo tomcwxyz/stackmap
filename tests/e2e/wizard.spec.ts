@@ -70,6 +70,27 @@ test.describe('the wizard', () => {
     await expect(page.getByText('Xero').first()).toBeVisible();
   });
 
+  test('reaches the review without naming a single owner', async ({ page }) => {
+    // Nobody should be stuck at the owners step because they do not know who
+    // looks after a system
+    await startWizard(page);
+    await skipRiskAssessment(page);
+    await pickFunctions(page, ['Finance']);
+    await addSystem(page, 'Xero');
+
+    await page.goto('/wizard/functions/owners');
+    await expect(page.getByText(/no owner yet for/i)).toBeVisible();
+
+    const cont = page.getByRole('button', { name: /^continue$/i });
+    await expect(cont).toBeEnabled();
+    await cont.click();
+
+    await page.waitForURL('**/wizard/functions/review');
+    await expect(
+      page.getByRole('heading', { name: /technology map for sunrise trust/i }),
+    ).toBeVisible();
+  });
+
   test('keeps what was entered when a step is revisited', async ({ page }) => {
     await startWizard(page);
     await skipRiskAssessment(page);
