@@ -230,6 +230,8 @@ describe('Core Types', () => {
         dataCategories: [],
         integrations: [],
         owners: [],
+        externalParties: [],
+        dataFlows: [],
         metadata: {
           version: '1.0.0',
           exportedAt: '2024-01-01T00:00:00Z',

@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { FunctionPicker } from '@/components/wizard/function-picker';
 import type { ArchitectureContextValue } from '@/hooks/useArchitecture';
 
@@ -32,6 +32,8 @@ const mockContextValue: ArchitectureContextValue = {
     dataCategories: [],
     integrations: [],
     owners: [],
+    externalParties: [],
+    dataFlows: [],
     metadata: { version: '1.0.0', exportedAt: '', stackmapVersion: '0.1.0', mappingPath: 'function_first' },
   },
   isLoading: false,
@@ -46,11 +48,18 @@ const mockContextValue: ArchitectureContextValue = {
   updateSystem: vi.fn(),
   removeSystem: vi.fn(),
   addDataCategory: vi.fn().mockReturnValue(''),
+  updateDataCategory: vi.fn(),
   removeDataCategory: vi.fn(),
   addIntegration: vi.fn().mockReturnValue(''),
   removeIntegration: vi.fn(),
   addOwner: vi.fn().mockReturnValue(''),
   removeOwner: vi.fn(),
+  addExternalParty: vi.fn().mockReturnValue(''),
+  updateExternalParty: vi.fn(),
+  removeExternalParty: vi.fn(),
+  addDataFlow: vi.fn().mockReturnValue(''),
+  updateDataFlow: vi.fn(),
+  removeDataFlow: vi.fn(),
   save: vi.fn().mockResolvedValue(undefined),
   clear: vi.fn().mockResolvedValue(undefined),
   getArchitecture: vi.fn().mockReturnValue(null),
@@ -192,5 +201,71 @@ describe('FunctionPicker', () => {
     render(<FunctionPicker />);
     const backLink = screen.getByRole('link', { name: /back/i });
     expect(backLink).toHaveAttribute('href', '/wizard');
+  });
+
+  describe('functions specific to the kind of organisation', () => {
+    function withOrgType(type: 'charity' | 'council' | 'private_business') {
+      mockContextValue.architecture = {
+        ...mockContextValue.architecture!,
+        organisation: { ...mockContextValue.architecture!.organisation, type },
+        functions: [],
+      };
+    }
+
+    afterEach(() => {
+      withOrgType('charity');
+    });
+
+    it('offers nothing extra to a charity', () => {
+      withOrgType('charity');
+      render(<FunctionPicker />);
+
+      expect(screen.queryByTestId('sector-functions')).not.toBeInTheDocument();
+    });
+
+    it('offers council functions to a council', () => {
+      withOrgType('council');
+      render(<FunctionPicker />);
+
+      const section = screen.getByTestId('sector-functions');
+      expect(within(section).getByText('Revenues & Benefits')).toBeInTheDocument();
+      expect(within(section).getByText('Adult Social Care')).toBeInTheDocument();
+    });
+
+    it('offers business functions to a business', () => {
+      withOrgType('private_business');
+      render(<FunctionPicker />);
+
+      expect(within(screen.getByTestId('sector-functions')).getByText('Sales')).toBeInTheDocument();
+    });
+
+    it('adds a chosen one as a custom function, with its description', async () => {
+      withOrgType('council');
+      const user = userEvent.setup();
+      render(<FunctionPicker />);
+
+      await user.click(screen.getByRole('checkbox', { name: /revenues & benefits/i }));
+      await user.click(screen.getByRole('button', { name: /^continue$/i }));
+
+      expect(addFunctionMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Revenues & Benefits',
+          type: 'custom',
+          description: expect.stringMatching(/council tax/i),
+        }),
+      );
+    });
+
+    it('can be unticked again', async () => {
+      withOrgType('council');
+      const user = userEvent.setup();
+      render(<FunctionPicker />);
+
+      const checkbox = screen.getByRole('checkbox', { name: /revenues & benefits/i });
+      await user.click(checkbox);
+      await user.click(checkbox);
+
+      expect(checkbox).not.toBeChecked();
+    });
   });
 });

@@ -18,6 +18,18 @@ export const DEFAULT_STAFF: Record<OrgSize, number> = {
   large: 200,
 };
 
+/**
+ * Staff to price per-seat tools for: what the organisation told us, or the
+ * midpoint of its size band when it did not say.
+ */
+export function resolveStaffCount(org: {
+  staffCount?: number;
+  size?: OrgSize;
+}): number {
+  if (org.staffCount != null && org.staffCount > 0) return org.staffCount;
+  return DEFAULT_STAFF[org.size ?? 'small'];
+}
+
 export interface CostEstimate {
   annualTotal: number;
   perSeat?: number;

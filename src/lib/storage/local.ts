@@ -1,18 +1,58 @@
 import type { Architecture } from '@/lib/types';
-import type { StorageAdapter } from './adapter';
+import type { LoadReport, StorageAdapter } from './adapter';
+import { migrateArchitecture } from './migrate';
+import {
+  BACKUP_KEY,
+  DEFAULT_MAP_ID,
+  STORAGE_KEY,
+  WORKSPACE_KEY,
+  mapStorageKey,
+} from './keys';
 
-export const STORAGE_KEY = 'stackmap_architecture';
+export { STORAGE_KEY, BACKUP_KEY };
 
 interface LocalStorageAdapterOptions {
   forceInMemory?: boolean;
+  /**
+   * Which map to read and write. Left out, the adapter follows whichever map
+   * the workspace says is active, so a page does not have to know.
+   */
+  mapId?: string;
 }
 
 export class LocalStorageAdapter implements StorageAdapter {
   private inMemoryStore: string | null = null;
+  private inMemoryBackup: string | null = null;
   private readonly useMemory: boolean;
+  private readonly fixedMapId?: string;
+  private lastLoadReport: LoadReport | null = null;
 
   constructor(options?: LocalStorageAdapterOptions) {
     this.useMemory = options?.forceInMemory ?? !LocalStorageAdapter.isLocalStorageAvailable();
+    this.fixedMapId = options?.mapId;
+  }
+
+  /**
+   * The key this adapter works against.
+   *
+   * Resolved per call rather than in the constructor: switching map writes a
+   * new active id, and an adapter that cached the old one would go on writing
+   * the previous map's document.
+   */
+  private storageKey(): string {
+    if (this.fixedMapId) return mapStorageKey(this.fixedMapId);
+
+    try {
+      const raw = localStorage.getItem(WORKSPACE_KEY);
+      if (!raw) return STORAGE_KEY;
+      const parsed = JSON.parse(raw) as { activeMapId?: unknown };
+      return typeof parsed.activeMapId === 'string'
+        ? mapStorageKey(parsed.activeMapId)
+        : STORAGE_KEY;
+    } catch {
+      // No workspace, or an unreadable one: the original single map
+      return mapStorageKey(DEFAULT_MAP_ID);
+    }
   }
 
   private static isLocalStorageAvailable(): boolean {
@@ -26,31 +66,62 @@ export class LocalStorageAdapter implements StorageAdapter {
     }
   }
 
-  async load(): Promise<Architecture | null> {
+  private read(): string | null {
+    return this.useMemory ? this.inMemoryStore : localStorage.getItem(this.storageKey());
+  }
+
+  /**
+   * Move unusable data aside instead of deleting it. The map may represent an
+   * afternoon of work, so a parse failure or a shape we cannot repair should
+   * cost the user nothing they could not recover by hand.
+   */
+  private backUpAndClear(raw: string): void {
+    if (this.useMemory) {
+      this.inMemoryBackup = raw;
+      this.inMemoryStore = null;
+      return;
+    }
     try {
-      const raw = this.useMemory
-        ? this.inMemoryStore
-        : localStorage.getItem(STORAGE_KEY);
-
-      if (raw === null || raw === undefined) {
-        return null;
-      }
-
-      const parsed = JSON.parse(raw);
-      if (parsed === null || parsed === undefined) {
-        return null;
-      }
-
-      return parsed as Architecture;
+      localStorage.setItem(BACKUP_KEY, raw);
     } catch {
-      // Corrupt data — clear it
-      if (this.useMemory) {
-        this.inMemoryStore = null;
-      } else {
-        localStorage.removeItem(STORAGE_KEY);
-      }
+      // If even the backup will not fit, still clear the bad document so the
+      // app can start; there is nothing more we can do here.
+    }
+    localStorage.removeItem(this.storageKey());
+  }
+
+  async load(): Promise<Architecture | null> {
+    const raw = this.read();
+
+    if (raw === null || raw === undefined) {
+      this.lastLoadReport = null;
       return null;
     }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      this.backUpAndClear(raw);
+      this.lastLoadReport = { droppedCount: 0, backedUp: true };
+      return null;
+    }
+
+    if (parsed === null || parsed === undefined) {
+      this.lastLoadReport = null;
+      return null;
+    }
+
+    const { architecture, droppedCount } = migrateArchitecture(parsed);
+
+    if (architecture === null) {
+      this.backUpAndClear(raw);
+      this.lastLoadReport = { droppedCount, backedUp: true };
+      return null;
+    }
+
+    this.lastLoadReport = { droppedCount, backedUp: false };
+    return architecture;
   }
 
   async save(arch: Architecture): Promise<void> {
@@ -58,7 +129,7 @@ export class LocalStorageAdapter implements StorageAdapter {
     if (this.useMemory) {
       this.inMemoryStore = json;
     } else {
-      localStorage.setItem(STORAGE_KEY, json);
+      localStorage.setItem(this.storageKey(), json);
     }
   }
 
@@ -66,7 +137,16 @@ export class LocalStorageAdapter implements StorageAdapter {
     if (this.useMemory) {
       this.inMemoryStore = null;
     } else {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(this.storageKey());
     }
+  }
+
+  getLastLoadReport(): LoadReport | null {
+    return this.lastLoadReport;
+  }
+
+  /** The raw text of the last document that could not be loaded, if any. */
+  getBackup(): string | null {
+    return this.useMemory ? this.inMemoryBackup : localStorage.getItem(BACKUP_KEY);
   }
 }

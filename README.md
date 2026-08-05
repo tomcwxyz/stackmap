@@ -3,7 +3,7 @@
 **Lightweight architecture mapping for social purpose organisations.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-335%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-1055%20passing-brightgreen.svg)]()
 [![WCAG 2.1 AA](https://img.shields.io/badge/accessibility-WCAG%202.1%20AA-blue.svg)]()
 
 ---
@@ -20,18 +20,27 @@ Stackmap is an open source tool that solves this problem. It provides a guided w
 
 - **Two wizard paths** — function-first ("what does your org do?") or service-first ("what do you deliver?"), both leading to the same architecture map
 - **8 standard functions** with descriptions and typical systems (Finance, Governance, People, Fundraising, Communications, Service Delivery, Operations, Data & Reporting)
-- **10 service templates** with auto-populated tool suggestions (Advice sessions, Grant distribution, Youth programmes, and more)
+- **Sector function sets** for councils (revenues and benefits, planning, social care, waste, housing and more) and for businesses
+- **14 service templates** with auto-populated tool suggestions (Advice sessions, Grant distribution, Youth programmes, and more)
 - **System suggestions** tailored by organisation type and size
 - **TechFreedom risk assessment** (optional) — scores systems across 5 dimensions: jurisdiction, continuity, surveillance, lock-in, and cost exposure
-- **27 pre-scored known tools** with detailed pricing data for automatic cost estimation
+- **134 pre-scored known tools** with detailed pricing data for automatic cost estimation
 - **Smart cost estimation** with per-seat pricing, tier selection, and penetration rates
+- **Spend discovery** — import an accounting or bank export and find the tools you pay for, with what they actually cost
+- **Systems inventory** — search, filter, sort, edit and delete every system in one place after the wizard
+- **Board report** — a printable one-page summary for trustees and funders
+- **Several maps and snapshots** — keep a map per organisation, copy one to try a change, and restore a labelled snapshot when the change was wrong
+- **External sharing** — record the funders, regulators, auditors and partners your data goes to, what goes to each and why, and whether it leaves the UK
+- **Draft data protection record** — a starting point for the UK GDPR Article 30 register, built from the map and exportable as a spreadsheet
 - **Live architecture map sidebar** showing your map as you build it
 - **Mermaid diagram generation** for visual architecture maps
-- **Cost analysis** with overlap detection
-- **JSON export** of complete architecture data
+- **Cost analysis** with estimates for uncosted systems, and duplication detection across the whole map
+- **Risk against importance** — the four-quadrant view of what to deal with first
+- **Contract renewals** with notice-period warnings and calendar export
+- **JSON, Markdown, CSV, SVG and PNG export** of your architecture
 - **WCAG 2.1 AA accessible** — keyboard navigable, screen reader compatible, axe-core tested
 - **Mobile responsive** design with mobile-first approach
-- **Offline-first** — all data stored in localStorage, no server required
+- **Offline-first** — all data stored in localStorage, no server required; stored maps are validated and migrated on load, and unreadable data is backed up rather than discarded
 
 ## Quick Start
 
@@ -68,28 +77,36 @@ Then open [http://localhost:3000](http://localhost:3000) in your browser.
 src/
 ├── app/                    # Next.js App Router pages and layouts
 │   ├── wizard/             # Wizard flow (function-first and service-first paths)
-│   ├── view/               # Diagram, table, and analysis views
-│   └── techfreedom/        # TechFreedom risk analysis views
+│   ├── view/               # Systems inventory, diagram, board report, data protection record
+│   └── maps/               # Several maps in one browser, and snapshots of each
 ├── components/
 │   ├── ui/                 # Base UI components (Button, Card, Input, Select, etc.)
 │   ├── wizard/             # Wizard-specific components (steps, forms, sidebar)
 │   ├── techfreedom/        # Risk badge, radar chart, risk details
-│   └── layout/             # Header, sidebar, footer
+│   ├── import/             # Import dialog and CSV preview
+│   ├── views/              # Systems table, diagram, board report, ROPA, maps
+│   └── layout/             # Header, footer, storage notice
 ├── lib/
 │   ├── types.ts            # Core TypeScript type definitions
 │   ├── schema.ts           # Zod validation schemas
+│   ├── version.ts          # Version constants written into stored/exported maps
 │   ├── functions.ts        # Standard functions data and helpers
 │   ├── function-templates.ts  # System suggestions per function/org type/size
 │   ├── service-templates.ts   # Service templates with suggested tools
+│   ├── sector-functions.ts    # Council and business function sets
 │   ├── cost-estimates.ts      # Cost estimation with tiered pricing
-│   ├── storage/            # Storage adapters (localStorage)
+│   ├── storage/            # Storage adapter, migration, workspace, localStorage backend
+│   ├── import/             # CSV and JSON import
+│   ├── export/             # Markdown and CSV export
+│   ├── analysis/           # Risk against importance, duplication, renewals
+│   ├── report/             # Board report and Article 30 record
 │   ├── diagram/            # Mermaid diagram generation
 │   └── techfreedom/        # Risk scoring, known tools database, API
-├── hooks/                  # React hooks (useArchitecture, useWizard, etc.)
+├── hooks/                  # React hooks (useArchitecture, useWorkspace, useStorageStatus, useAppConfig)
 └── styles/                 # Global CSS with design tokens
 
 tests/
-├── unit/                   # Unit tests for lib/ modules
+├── unit/                   # Unit tests for lib/ and hooks
 ├── components/             # Component tests with accessibility checks
 └── e2e/                    # Playwright end-to-end tests
 ```
@@ -103,15 +120,16 @@ npm run dev           # Start development server
 npm run build         # Production build
 npm run start         # Start production server
 npm run test          # Run unit + component tests
+npm run test:e2e      # Run end-to-end tests (Playwright)
 npm run test:watch    # Run tests in watch mode
 npm run test:coverage # Run tests with coverage report
-npm run lint          # ESLint
+npm run lint          # ESLint (flat config in eslint.config.mjs)
 npm run typecheck     # TypeScript type checking
 ```
 
 ### Testing
 
-Stackmap follows a strict TDD workflow (red, green, refactor). The test suite currently includes **335 tests across 30 test files**.
+Stackmap follows a strict TDD workflow (red, green, refactor). The test suite currently includes **1055 tests across 82 test files**.
 
 Every component test includes an accessibility check using jest-axe:
 
@@ -134,7 +152,7 @@ it('has no accessibility violations', async () => {
 
 Before any change is considered complete:
 
-1. `npm run lint` passes
+1. `npm run lint` passes (warnings are errors)
 2. `npm run typecheck` passes
 3. `npm run test` passes
 4. Manual keyboard navigation works
@@ -148,7 +166,7 @@ Stackmap's suggestions, templates, and known tools are defined in TypeScript fil
 
 **File**: `src/lib/techfreedom/tools.ts`
 
-This file contains the `KNOWN_TOOLS` array — approximately 27 pre-scored tools with risk assessments and pricing data. Each entry is a `KnownTool` object.
+This file contains the `KNOWN_TOOLS` array — 134 pre-scored tools with risk assessments and pricing data. Each entry is a `KnownTool` object.
 
 To add a new tool:
 

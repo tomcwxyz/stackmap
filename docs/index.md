@@ -28,13 +28,21 @@ Stackmap was built because I often find organisations struggle to do this in an 
 ## Key Features
 
 - **Two wizard paths** — start with organisational functions ("what we do") or services ("what we deliver")
-- **Smart suggestions** — system recommendations tailored to your organisation type and size
-- **10 service templates** with auto-populated tools
+- **Smart suggestions** — system recommendations tailored to your organisation type and size, including function sets for councils and businesses
+- **14 service templates** with auto-populated tools
+- **Find your tools from what you pay for** — import an accounting or bank export and Stackmap recognises the software in it
 - **Import from CSV or JSON** — bring in existing data from spreadsheets or previous exports, with merge support
 - **TechFreedom risk assessment** — integrated wizard step scoring systems across jurisdiction, continuity, surveillance, lock-in, and cost exposure
-- **Cost estimation** with per-seat pricing and tier selection
+- **Cost estimation** with per-seat pricing, tier selection and estimates for systems you have not costed
+- **What to deal with first** — risk crossed with how much you depend on each system
+- **Contract renewals** with notice-period warnings and a calendar export
 - **Architecture and data flow diagrams** — visual maps with status indicators, personal data flags, and sensitivity colouring
-- **JSON export** of your complete architecture
+- **Systems inventory** — edit or delete any system after the wizard, in one searchable table
+- **Board report** — a printable summary for trustees and funders
+- **Several maps and snapshots** — one map per organisation, and a labelled snapshot to go back to
+- **Who sees your data** — funders, regulators, auditors and partners, and what goes to each
+- **Draft data protection record** — a starting point for the register UK GDPR Article 30 asks for, built from your map
+- **JSON, Markdown, CSV, SVG and PNG export** of your complete architecture
 - **Fully accessible** — WCAG 2.1 AA, keyboard navigable, screen reader compatible
 
 ## Quick Start

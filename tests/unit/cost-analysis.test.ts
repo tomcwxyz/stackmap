@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  calculateCostSummary,
-  findSystemOverlaps,
-  formatCurrency,
-} from '@/lib/cost-analysis';
+import { calculateCostSummary, estimateUncosted, formatCurrency } from '@/lib/cost-analysis';
 import type { System, OrgFunction } from '@/lib/types';
 
 function makeSystem(overrides: Partial<System> & { id: string; name: string }): System {
@@ -171,63 +167,94 @@ describe('calculateCostSummary', () => {
   });
 });
 
-describe('findSystemOverlaps', () => {
-  const functions: OrgFunction[] = [
-    makeFunction({ id: 'fn-1', name: 'Finance', type: 'finance' }),
-    makeFunction({ id: 'fn-2', name: 'Fundraising', type: 'fundraising' }),
-  ];
+describe('estimating what is missing', () => {
+  const functions: OrgFunction[] = [];
 
-  it('detects two CRM systems under the same function', () => {
-    const systems: System[] = [
-      makeSystem({ id: 's1', name: 'Salesforce', type: 'crm', functionIds: ['fn-2'] }),
-      makeSystem({ id: 's2', name: 'HubSpot', type: 'crm', functionIds: ['fn-2'] }),
-    ];
-    const overlaps = findSystemOverlaps(systems, functions);
-    expect(overlaps).toHaveLength(1);
-    expect(overlaps[0].functionName).toBe('Fundraising');
-    expect(overlaps[0].overlapType).toBe('2 CRM systems');
-    expect(overlaps[0].systems).toHaveLength(2);
+  it('leaves estimates at zero when no staff count is given', () => {
+    const systems = [makeSystem({ id: 's1', name: 'Slack' })];
+
+    const result = calculateCostSummary(systems, functions);
+
+    expect(result.estimatedAnnual).toBe(0);
+    expect(result.estimatedCount).toBe(0);
+    expect(result.uncostCount).toBe(1);
   });
 
-  it('returns empty array when no overlaps exist', () => {
-    const systems: System[] = [
-      makeSystem({ id: 's1', name: 'Xero', type: 'finance', functionIds: ['fn-1'] }),
-      makeSystem({ id: 's2', name: 'Salesforce', type: 'crm', functionIds: ['fn-2'] }),
-    ];
-    const overlaps = findSystemOverlaps(systems, functions);
-    expect(overlaps).toHaveLength(0);
+  it('prices uncosted systems it recognises', () => {
+    const systems = [makeSystem({ id: 's1', name: 'Slack' })];
+
+    const result = calculateCostSummary(systems, functions, { staffCount: 15 });
+
+    expect(result.estimatedCount).toBe(1);
+    expect(result.estimatedAnnual).toBeGreaterThan(0);
   });
 
-  it('does not flag "other" or "custom" type systems as overlaps', () => {
-    const systems: System[] = [
-      makeSystem({ id: 's1', name: 'Tool A', type: 'other', functionIds: ['fn-1'] }),
-      makeSystem({ id: 's2', name: 'Tool B', type: 'other', functionIds: ['fn-1'] }),
+  it('does not estimate systems that already have a cost', () => {
+    const systems = [
+      makeSystem({
+        id: 's1',
+        name: 'Slack',
+        cost: { amount: 500, period: 'annual', model: 'subscription' },
+      }),
     ];
-    const overlaps = findSystemOverlaps(systems, functions);
-    expect(overlaps).toHaveLength(0);
+
+    const result = calculateCostSummary(systems, functions, { staffCount: 15 });
+
+    expect(result.totalAnnual).toBe(500);
+    expect(result.estimatedAnnual).toBe(0);
+    expect(result.estimatedCount).toBe(0);
   });
 
-  it('detects overlaps across different functions independently', () => {
-    const systems: System[] = [
-      makeSystem({ id: 's1', name: 'Salesforce', type: 'crm', functionIds: ['fn-1', 'fn-2'] }),
-      makeSystem({ id: 's2', name: 'HubSpot', type: 'crm', functionIds: ['fn-1'] }),
-      makeSystem({ id: 's3', name: 'Dynamics', type: 'crm', functionIds: ['fn-2'] }),
-    ];
-    const overlaps = findSystemOverlaps(systems, functions);
-    // fn-1 has Salesforce + HubSpot (2 CRMs), fn-2 has Salesforce + Dynamics (2 CRMs)
-    expect(overlaps).toHaveLength(2);
+  it('cannot price a system it does not recognise', () => {
+    const systems = [makeSystem({ id: 's1', name: 'Our in-house rota tool' })];
+
+    const result = calculateCostSummary(systems, functions, { staffCount: 15 });
+
+    expect(result.uncostCount).toBe(1);
+    expect(result.estimatedCount).toBe(0);
   });
 
-  it('sorts overlaps by system count descending', () => {
-    const systems: System[] = [
-      makeSystem({ id: 's1', name: 'CRM1', type: 'crm', functionIds: ['fn-2'] }),
-      makeSystem({ id: 's2', name: 'CRM2', type: 'crm', functionIds: ['fn-2'] }),
-      makeSystem({ id: 's3', name: 'CRM3', type: 'crm', functionIds: ['fn-2'] }),
-      makeSystem({ id: 's4', name: 'Fin1', type: 'finance', functionIds: ['fn-1'] }),
-      makeSystem({ id: 's5', name: 'Fin2', type: 'finance', functionIds: ['fn-1'] }),
+  it('scales the estimate with headcount', () => {
+    const systems = [makeSystem({ id: 's1', name: 'Slack' })];
+
+    const small = calculateCostSummary(systems, functions, { staffCount: 5 });
+    const large = calculateCostSummary(systems, functions, { staffCount: 200 });
+
+    expect(large.estimatedAnnual).toBeGreaterThan(small.estimatedAnnual);
+  });
+
+  it('keeps recorded and estimated figures separate', () => {
+    const systems = [
+      makeSystem({
+        id: 's1',
+        name: 'Xero',
+        cost: { amount: 400, period: 'annual', model: 'subscription' },
+      }),
+      makeSystem({ id: 's2', name: 'Slack' }),
     ];
-    const overlaps = findSystemOverlaps(systems, functions);
-    expect(overlaps[0].systems).toHaveLength(3);
-    expect(overlaps[1].systems).toHaveLength(2);
+
+    const result = calculateCostSummary(systems, functions, { staffCount: 15 });
+
+    expect(result.totalAnnual).toBe(400);
+    expect(result.estimatedAnnual).toBeGreaterThan(0);
+  });
+});
+
+describe('estimateUncosted', () => {
+  it('ignores free tools, which add nothing to the bill', () => {
+    // Signal is free in the tools database
+    const result = estimateUncosted([makeSystem({ id: 's1', name: 'Signal' })], 15);
+
+    expect(result).toEqual({ total: 0, count: 0 });
+  });
+
+  it('adds up several recognised systems', () => {
+    const result = estimateUncosted(
+      [makeSystem({ id: 's1', name: 'Slack' }), makeSystem({ id: 's2', name: 'Xero' })],
+      15,
+    );
+
+    expect(result.count).toBe(2);
+    expect(result.total).toBeGreaterThan(0);
   });
 });

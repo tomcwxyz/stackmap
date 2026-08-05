@@ -5,6 +5,54 @@ All notable changes to Stackmap will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Several maps in one browser, and snapshots** — a new "Your maps" page keeps more than one map, so an advisor working with several organisations no longer has to clear one to start the next, and anyone can copy a map to try a change without risking the real one. Switching, renaming, copying and deleting are all there, and the last map cannot be deleted by accident. Snapshots save the map as it is under a label you choose; restoring one snapshots what was there first, so the wrong restore costs nothing. The last ten snapshots of each map are kept. Your existing map becomes the first in the list without being moved or rewritten.
+- **A draft data protection record** — if any of your data holds personal data, Stackmap now drafts the record of processing activities that UK GDPR Article 30 asks for, at `/view/ropa`. It fills in what it can from your map — what data you hold, which systems hold it, how those are hosted, who it goes to and why, and whether it leaves the UK — and asks you for the three things a map cannot know: who the data is about, your lawful basis, and how long you keep it. Each entry says what it is still missing rather than guessing, and the whole thing exports as a spreadsheet with Article 30 headings. It is a draft to check and sign off, not a finished compliance document.
+- **Who sees your data** — the data step now asks who outside the organisation your data goes to: funders, regulators, auditors, delivery partners and suppliers, with roughly where they are. For each thing you share you can record which system it comes from, who gets it, how it gets there, how often and why. Sending personal data outside the UK is flagged, because that needs its own safeguards.
+- **Find your tools from what you pay for** — import a transaction export from your accounting software or online banking, and Stackmap picks out the payees that look like software, groups repeat payments, works out what each costs over a year and adds them to your map with real figures rather than estimates. Payees it does not recognise are listed separately for you to tick if they belong. The file is read in your browser and never uploaded.
+- **Functions for councils and businesses** — a council picking its organisation type is now offered Revenues & Benefits, Planning & Building Control, Adult Social Care, Children's Services, Waste & Environment, Housing, Customer Services and Elections, each with the systems typically behind it. Businesses get Sales, Customer Support, Product & Delivery and Legal & Compliance. Charities and social enterprises see the standard set as before.
+- **What to deal with first** — your systems crossed against how much you depend on them and how risky they are, as four groups with "critical and exposed" first. Shown in the review, the board report and the Markdown export.
+- **Contract renewals** — record when a contract renews, how many licences you pay for and how much notice the supplier needs. The review and board report show what renews next and flag any notice deadline that has already passed, and you can download the dates as a calendar file.
+- **Your systems** — a new view listing every system with search, filters and sortable columns, where you can edit or delete anything without walking back through the wizard. This is also the only place several details can be set at all: status (active, planned, retiring, legacy), web address, notes, owner and importance.
+- **Score your own tools** — systems that are not in the known tools database can now be given TechFreedom risk scores by hand, instead of being left unassessed.
+- **Board report** — a printable one-page summary at `/view/report`: headline numbers, what needs attention, the systems you could not operate without, where the money goes, possible duplication and a risk summary. Print it or save it as a PDF for a trustee meeting.
+- **How well does it work?** — the integrations step now asks whether each connection is reliable or fragile, and fragile ones are flagged in the review and the board report.
+- **SVG export** of diagrams alongside PNG, which stays sharp at any size.
+
+### Fixed
+
+- **Imported spend now replaces the figures Stackmap guessed** — costs record where they came from, so real money from your bank replaces an estimate and refreshes an earlier import, but never overwrites a figure you typed in yourself. Previously this was inferred from the pricing model, which meant wizard estimates were treated as your own and left in place, while a figure you typed and left as "unknown" was overwritten.
+- **Two payment streams to one supplier no longer lose half the money** — payees that clean differently but name the same tool are combined before being added, instead of the first creating the system and the second quietly doing nothing.
+- **The Spend format is only offered where it works** — opening the import dialog from the wizard's first page offered it without anywhere to send the result, so confirming a selection did nothing.
+- **Your map survives a bad save** — if the browser refuses to store your map (usually because storage is full), Stackmap now tells you and prompts you to export, instead of failing silently.
+- **Maps written by older versions load properly** — stored maps are checked and brought up to date on load, filling in fields that did not exist when the map was saved.
+- **Damaged maps are no longer lost** — a map that cannot be read is kept as a backup in your browser rather than deleted, and individual entries that cannot be repaired are dropped with a count shown rather than taking the whole map with them.
+- **The Data and Integrations steps no longer discard your work** — entries are saved as you add them, so leaving the step through the stepper (rather than the Continue button) keeps them.
+- **Diagram labels cannot inject markup** — system and function names taken from imported files are stripped of angle brackets, and diagrams now render with strict security settings.
+- **Functions with the same name get their own diagram groups** instead of being merged together.
+- **Version numbers agree** — exported and stored maps now carry a single, correct version rather than three different ones.
+- **A step no longer looks empty after a reload** — wizard steps read your saved map before drawing their forms, instead of drawing an empty one over data that was already there.
+- **Clicking "Add system" works first time** — showing the estimated cost when you left the name field used to nudge the button out from under the pointer, so the click missed.
+- **A change made just before closing the tab is still saved** — pending writes are flushed when the page goes away, not only when the app closes normally.
+- **Importing the same spreadsheet twice no longer doubles your map** — rows are matched to systems you already have by name and update them instead, filling in blanks without overwriting anything you typed. The preview says how many rows are new and how many will be updated.
+
+### Changed
+
+- **Duplication is now spotted across the whole map**, not one function at a time, so two CRMs in different departments are finally visible. Each group shows what the tools cost together and roughly what consolidating could free up.
+- **The cost total no longer stops at what you typed in** — systems with no cost recorded are priced from the known tools database where possible, shown separately from the recorded figure, with anything that still could not be priced called out.
+- Saving to the browser is debounced, so typing no longer rewrites the whole map on every keystroke.
+
+### Internal
+
+- ESLint configuration added, so `npm run lint` runs; a CI workflow now runs lint, typecheck and tests on every push and pull request.
+- Removed the unused `sql.js` dependency.
+- Diagram output is now checked against the real Mermaid parser in tests.
+- End-to-end tests cover the wizard in a real browser: full traversal, revisiting a step, reloading mid-flow, editing from the inventory and clearing the map. They run in CI.
+- Lint runs with warnings treated as errors; the effect-related warnings that were previously downgraded have been fixed at source, and app config now uses `useSyncExternalStore` (which also keeps two open tabs in step).
+
 ## [0.3.0] - 2026-04-01
 
 ### Added

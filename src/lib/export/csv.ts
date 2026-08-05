@@ -1,5 +1,6 @@
 import type { Architecture, System } from '@/lib/types';
 import { getImportanceTier } from '@/lib/importance';
+import { annualiseCost } from '@/lib/cost-analysis';
 
 function escapeCsv(value: string): string {
   if (value.includes(',') || value.includes('"') || value.includes('\n')) {
@@ -17,11 +18,7 @@ function formatType(type: string): string {
 
 function annualCost(system: System): string {
   if (!system.cost) return '';
-  if (system.cost.model === 'free') return '0';
-  const annual = system.cost.period === 'monthly'
-    ? system.cost.amount * 12
-    : system.cost.amount;
-  return String(Math.round(annual));
+  return String(Math.round(annualiseCost(system)));
 }
 
 export function generateCsvExport(arch: Architecture): string {
@@ -36,6 +33,9 @@ export function generateCsvExport(arch: Architecture): string {
     'Importance Tier',
     'Annual Cost (GBP)',
     'Cost Model',
+    'Licences',
+    'Renews On',
+    'Notice Period (days)',
     'Functions',
     'Services',
     'Owner',
@@ -67,6 +67,9 @@ export function generateCsvExport(arch: Architecture): string {
       tier?.label ?? '',
       annualCost(system),
       system.cost?.model ? formatType(system.cost.model) : '',
+      system.seats != null ? String(system.seats) : '',
+      system.renewalDate ?? '',
+      system.noticePeriodDays != null ? String(system.noticePeriodDays) : '',
       functionNames,
       serviceNames,
       ownerName,

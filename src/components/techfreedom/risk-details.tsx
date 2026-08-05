@@ -7,6 +7,10 @@ export interface RiskDetailsProps {
   score: TechFreedomScore;
   onChange?: (score: TechFreedomScore) => void;
   readOnly?: boolean;
+  /** Scopes the field ids, so several systems can be scored on one page. */
+  idPrefix?: string;
+  /** Whether the panel starts open. */
+  defaultOpen?: boolean;
 }
 
 const scoreColours: Record<number, string> = {
@@ -17,7 +21,13 @@ const scoreColours: Record<number, string> = {
   5: 'bg-red-50',
 };
 
-export function RiskDetails({ score, onChange, readOnly }: RiskDetailsProps) {
+export function RiskDetails({
+  score,
+  onChange,
+  readOnly,
+  idPrefix = 'risk',
+  defaultOpen = false,
+}: RiskDetailsProps) {
   const isEditable = !!onChange && !readOnly;
 
   function handleChange(key: RiskDimensionKey, value: number) {
@@ -26,7 +36,7 @@ export function RiskDetails({ score, onChange, readOnly }: RiskDetailsProps) {
   }
 
   return (
-    <details className="rounded-lg border border-surface-300">
+    <details open={defaultOpen} className="rounded-lg border border-surface-300">
       <summary className="cursor-pointer px-4 py-2 text-sm font-medium font-body text-primary-800 hover:bg-surface-50">
         View risk details
       </summary>
@@ -43,13 +53,16 @@ export function RiskDetails({ score, onChange, readOnly }: RiskDetailsProps) {
                 className={`flex items-center justify-between gap-3 rounded-md px-3 py-2 ${scoreColours[dimScore] ?? 'bg-surface-50'}`}
               >
                 <label
-                  htmlFor={`risk-dim-${dim.key}`}
+                  htmlFor={`${idPrefix}-dim-${dim.key}`}
                   className="text-sm font-medium font-body text-primary-900"
                 >
                   {dim.label}
+                  <span className="block text-xs font-normal text-primary-600">
+                    {dim.description}
+                  </span>
                 </label>
                 <select
-                  id={`risk-dim-${dim.key}`}
+                  id={`${idPrefix}-dim-${dim.key}`}
                   value={dimScore}
                   disabled={!isEditable}
                   onChange={(e) => handleChange(dim.key, Number(e.target.value))}

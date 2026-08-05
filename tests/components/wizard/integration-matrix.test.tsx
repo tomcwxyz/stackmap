@@ -22,6 +22,7 @@ vi.mock('next/link', () => ({
 }));
 
 const addIntegrationMock = vi.fn().mockReturnValue('mock-intg-id');
+const removeIntegrationMock = vi.fn();
 
 const makeMock = (systemCount: number): ArchitectureContextValue => ({
   architecture: {
@@ -40,6 +41,8 @@ const makeMock = (systemCount: number): ArchitectureContextValue => ({
     dataCategories: [],
     integrations: [],
     owners: [],
+    externalParties: [],
+    dataFlows: [],
     metadata: { version: '1.0.0', exportedAt: '', stackmapVersion: '0.1.0', mappingPath: 'function_first' },
   },
   isLoading: false,
@@ -54,11 +57,18 @@ const makeMock = (systemCount: number): ArchitectureContextValue => ({
   updateSystem: vi.fn(),
   removeSystem: vi.fn(),
   addDataCategory: vi.fn().mockReturnValue(''),
+  updateDataCategory: vi.fn(),
   removeDataCategory: vi.fn(),
   addIntegration: addIntegrationMock,
-  removeIntegration: vi.fn(),
+  removeIntegration: removeIntegrationMock,
   addOwner: vi.fn().mockReturnValue(''),
   removeOwner: vi.fn(),
+  addExternalParty: vi.fn().mockReturnValue(''),
+  updateExternalParty: vi.fn(),
+  removeExternalParty: vi.fn(),
+  addDataFlow: vi.fn().mockReturnValue(''),
+  updateDataFlow: vi.fn(),
+  removeDataFlow: vi.fn(),
   save: vi.fn().mockResolvedValue(undefined),
   clear: vi.fn().mockResolvedValue(undefined),
   getArchitecture: vi.fn().mockReturnValue(null),
@@ -134,28 +144,96 @@ describe('IntegrationMatrix', () => {
     expect(screen.queryByText(/connections added/i)).not.toBeInTheDocument();
   });
 
-  it('shows integration type, direction, and frequency selects', () => {
+  it('shows integration type, direction, frequency and reliability selects', () => {
     render(<IntegrationMatrix />);
     expect(screen.getByLabelText(/how are they connected/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/direction/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/how often/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/how well does it work/i)).toBeInTheDocument();
   });
 
-  it('calls addIntegration on continue', async () => {
+  it('records how well a connection works', async () => {
+    const user = userEvent.setup();
+    render(<IntegrationMatrix />);
+
+    await user.selectOptions(screen.getByLabelText(/from system/i), 'sys-1');
+    await user.selectOptions(screen.getByLabelText(/to system/i), 'sys-2');
+    await user.selectOptions(screen.getByLabelText(/how well does it work/i), 'fragile');
+    await user.click(screen.getByRole('button', { name: /add connection/i }));
+
+    expect(addIntegrationMock).toHaveBeenCalledWith(
+      expect.objectContaining({ reliability: 'fragile' }),
+    );
+  });
+
+  it('flags a fragile connection in the list', async () => {
+    const user = userEvent.setup();
+    render(<IntegrationMatrix />);
+
+    await user.selectOptions(screen.getByLabelText(/from system/i), 'sys-1');
+    await user.selectOptions(screen.getByLabelText(/to system/i), 'sys-2');
+    await user.selectOptions(screen.getByLabelText(/how well does it work/i), 'fragile');
+    await user.click(screen.getByRole('button', { name: /add connection/i }));
+
+    expect(screen.getByText('Fragile')).toBeInTheDocument();
+  });
+
+  it('defaults reliability to unknown when not answered', async () => {
     const user = userEvent.setup();
     render(<IntegrationMatrix />);
 
     await user.selectOptions(screen.getByLabelText(/from system/i), 'sys-1');
     await user.selectOptions(screen.getByLabelText(/to system/i), 'sys-2');
     await user.click(screen.getByRole('button', { name: /add connection/i }));
-    await user.click(screen.getByRole('button', { name: /^continue$/i }));
 
+    expect(addIntegrationMock).toHaveBeenCalledWith(
+      expect.objectContaining({ reliability: 'unknown' }),
+    );
+  });
+
+  it('saves a connection as soon as it is added, not on continue', async () => {
+    const user = userEvent.setup();
+    render(<IntegrationMatrix />);
+
+    await user.selectOptions(screen.getByLabelText(/from system/i), 'sys-1');
+    await user.selectOptions(screen.getByLabelText(/to system/i), 'sys-2');
+    await user.click(screen.getByRole('button', { name: /add connection/i }));
+
+    // The user may now leave via the stepper rather than Continue, so the
+    // connection has to be in the architecture already
     expect(addIntegrationMock).toHaveBeenCalledWith(
       expect.objectContaining({
         sourceSystemId: 'sys-1',
         targetSystemId: 'sys-2',
       }),
     );
+  });
+
+  it('removes a connection from the architecture straight away', async () => {
+    const user = userEvent.setup();
+    render(<IntegrationMatrix />);
+
+    await user.selectOptions(screen.getByLabelText(/from system/i), 'sys-1');
+    await user.selectOptions(screen.getByLabelText(/to system/i), 'sys-2');
+    await user.click(screen.getByRole('button', { name: /add connection/i }));
+    await user.click(screen.getByRole('button', { name: /remove connection/i }));
+
+    expect(removeIntegrationMock).toHaveBeenCalledWith('mock-intg-id');
+  });
+
+  it('only navigates on continue, without rewriting what was added', async () => {
+    const user = userEvent.setup();
+    render(<IntegrationMatrix />);
+
+    await user.selectOptions(screen.getByLabelText(/from system/i), 'sys-1');
+    await user.selectOptions(screen.getByLabelText(/to system/i), 'sys-2');
+    await user.click(screen.getByRole('button', { name: /add connection/i }));
+    addIntegrationMock.mockClear();
+
+    await user.click(screen.getByRole('button', { name: /^continue$/i }));
+
+    expect(addIntegrationMock).not.toHaveBeenCalled();
+    expect(removeIntegrationMock).not.toHaveBeenCalled();
     expect(pushMock).toHaveBeenCalledWith('/wizard/functions/owners');
   });
 

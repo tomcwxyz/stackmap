@@ -44,6 +44,8 @@ const fullArchitecture: Architecture = {
   owners: [
     { id: 'own-1', name: 'Sarah Jones', role: 'Finance Manager', isExternal: false },
   ],
+  externalParties: [],
+  dataFlows: [],
   metadata: { version: '1.0.0', exportedAt: '', stackmapVersion: '0.1.0', mappingPath: 'function_first' },
 };
 
@@ -61,11 +63,18 @@ const mockContextValue: ArchitectureContextValue = {
   updateSystem: vi.fn(),
   removeSystem: vi.fn(),
   addDataCategory: vi.fn().mockReturnValue(''),
+  updateDataCategory: vi.fn(),
   removeDataCategory: vi.fn(),
   addIntegration: vi.fn().mockReturnValue(''),
   removeIntegration: vi.fn(),
   addOwner: vi.fn().mockReturnValue(''),
   removeOwner: vi.fn(),
+  addExternalParty: vi.fn().mockReturnValue(''),
+  updateExternalParty: vi.fn(),
+  removeExternalParty: vi.fn(),
+  addDataFlow: vi.fn().mockReturnValue(''),
+  updateDataFlow: vi.fn(),
+  removeDataFlow: vi.fn(),
   save: saveMock,
   clear: vi.fn().mockResolvedValue(undefined),
   getArchitecture: vi.fn().mockReturnValue(fullArchitecture),
@@ -392,6 +401,95 @@ describe('ReviewSummary', () => {
       // Restore
       mockContextValue.architecture = origArch;
       mockContextValue.getArchitecture = origGet;
+    });
+
+    it('says what the systems with no recorded cost are likely to add', () => {
+      const arch: Architecture = {
+        ...fullArchitecture,
+        organisation: { ...fullArchitecture.organisation, staffCount: 15 },
+        systems: [
+          {
+            ...fullArchitecture.systems[0],
+            cost: { amount: 400, period: 'annual', model: 'subscription' },
+          },
+          // Recognised by the tools database, but no cost recorded here
+          {
+            id: 'sys-slack',
+            name: 'Slack',
+            type: 'messaging',
+            hosting: 'cloud',
+            status: 'active',
+            functionIds: ['fn-1'],
+            serviceIds: [],
+          },
+        ],
+      };
+
+      const origArch = mockContextValue.architecture;
+      mockContextValue.architecture = arch;
+
+      render(<ReviewSummary />);
+
+      const note = screen.getByTestId('cost-estimate-note');
+      expect(note).toHaveTextContent(/plus roughly/i);
+      expect(note).toHaveTextContent(/1 system with no cost recorded/i);
+
+      mockContextValue.architecture = origArch;
+    });
+
+    it('crosses risk with importance once both are known', () => {
+      const arch: Architecture = {
+        ...fullArchitecture,
+        systems: [
+          {
+            ...fullArchitecture.systems[0],
+            importance: 9,
+            techFreedomScore: {
+              jurisdiction: 4, continuity: 4, surveillance: 4, lockIn: 4, costExposure: 4,
+              isAutoScored: true,
+            },
+          },
+        ],
+        metadata: { ...fullArchitecture.metadata, techFreedomEnabled: true },
+      };
+
+      const origArch = mockContextValue.architecture;
+      mockContextValue.architecture = arch;
+
+      render(<ReviewSummary />);
+
+      expect(screen.getByTestId('risk-importance-section')).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: /critical and exposed/i }),
+      ).toBeInTheDocument();
+
+      mockContextValue.architecture = origArch;
+    });
+
+    it('omits the risk against importance section when nothing can be plotted', () => {
+      const arch: Architecture = {
+        ...fullArchitecture,
+        // Risk scores but no importance, so there is nothing to cross
+        systems: [
+          {
+            ...fullArchitecture.systems[0],
+            techFreedomScore: {
+              jurisdiction: 4, continuity: 4, surveillance: 4, lockIn: 4, costExposure: 4,
+              isAutoScored: true,
+            },
+          },
+        ],
+        metadata: { ...fullArchitecture.metadata, techFreedomEnabled: true },
+      };
+
+      const origArch = mockContextValue.architecture;
+      mockContextValue.architecture = arch;
+
+      render(<ReviewSummary />);
+
+      expect(screen.queryByTestId('risk-importance-section')).not.toBeInTheDocument();
+
+      mockContextValue.architecture = origArch;
     });
 
     it('does NOT show Technology Risk Summary when techFreedomEnabled is false', () => {

@@ -63,6 +63,56 @@
   }
 }
 
+/* ── Print ──
+   The board report is meant to be handed round a meeting, so printing drops
+   the site chrome and anything interactive and leaves the document itself. */
+@media print {
+  header:not(article header),
+  footer:not(article footer),
+  nav,
+  aside,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+    font-size: 11pt;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+
+  @page {
+    margin: 15mm;
+  }
+
+  /* Keep sections and table rows off page boundaries where we can */
+  section,
+  tr,
+  li {
+    break-inside: avoid;
+  }
+
+  h1,
+  h2 {
+    break-after: avoid;
+  }
+
+  /* Background colours are dropped by default; keep the severity bars visible */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  a[href^='http']::after {
+    content: ' (' attr(href) ')';
+    font-size: 9pt;
+    color: #555;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

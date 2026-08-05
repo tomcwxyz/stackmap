@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { LocalStorageAdapter, STORAGE_KEY } from '@/lib/storage/local';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { LocalStorageAdapter, STORAGE_KEY, BACKUP_KEY } from '@/lib/storage/local';
+import { WORKSPACE_KEY, mapStorageKey } from '@/lib/storage/keys';
 import type { Architecture } from '@/lib/types';
 
 const mockArchitecture: Architecture = {
@@ -29,11 +30,14 @@ const mockArchitecture: Architecture = {
   dataCategories: [],
   integrations: [],
   owners: [],
+  externalParties: [],
+  dataFlows: [],
   metadata: {
     version: '1.0.0',
     exportedAt: '2026-01-01T00:00:00.000Z',
     stackmapVersion: '0.1.0',
     mappingPath: 'function_first',
+    techFreedomEnabled: false,
   },
 };
 
@@ -64,10 +68,57 @@ describe('LocalStorageAdapter', () => {
       expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
     });
 
+    it('keeps a backup of data it could not parse', async () => {
+      localStorage.setItem(STORAGE_KEY, '{invalid json!!!');
+      await adapter.load();
+      expect(localStorage.getItem(BACKUP_KEY)).toBe('{invalid json!!!');
+      expect(adapter.getLastLoadReport()).toEqual({ droppedCount: 0, backedUp: true });
+    });
+
+    it('keeps a backup of data whose shape cannot be repaired', async () => {
+      const unusable = JSON.stringify({ notAnArchitecture: true });
+      localStorage.setItem(STORAGE_KEY, unusable);
+
+      const result = await adapter.load();
+
+      expect(result).toBeNull();
+      expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+      expect(localStorage.getItem(BACKUP_KEY)).toBe(unusable);
+      expect(adapter.getLastLoadReport()?.backedUp).toBe(true);
+    });
+
     it('returns null when stored value is "null"', async () => {
       localStorage.setItem(STORAGE_KEY, 'null');
       const result = await adapter.load();
       expect(result).toBeNull();
+    });
+
+    it('migrates a map written before a field existed', async () => {
+      const older = JSON.parse(JSON.stringify(mockArchitecture));
+      delete older.services;
+      delete older.metadata.techFreedomEnabled;
+      delete older.systems[0].serviceIds;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(older));
+
+      const result = await adapter.load();
+
+      expect(result).not.toBeNull();
+      expect(result!.services).toEqual([]);
+      expect(result!.systems[0].serviceIds).toEqual([]);
+      expect(result!.metadata.techFreedomEnabled).toBe(false);
+      // A repairable document is not treated as lost
+      expect(localStorage.getItem(BACKUP_KEY)).toBeNull();
+    });
+
+    it('reports entities it had to drop without losing the map', async () => {
+      const damaged = JSON.parse(JSON.stringify(mockArchitecture));
+      damaged.systems.push({ name: 'System with no id', type: 'crm' });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(damaged));
+
+      const result = await adapter.load();
+
+      expect(result!.systems).toHaveLength(1);
+      expect(adapter.getLastLoadReport()).toEqual({ droppedCount: 1, backedUp: false });
     });
   });
 
@@ -116,6 +167,73 @@ describe('LocalStorageAdapter', () => {
       await memAdapter.clear();
       const cleared = await memAdapter.load();
       expect(cleared).toBeNull();
+    });
+  });
+  describe('following the active map', () => {
+    it('reads the original key when there is no workspace', async () => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(mockArchitecture));
+
+      await expect(adapter.load()).resolves.toEqual(mockArchitecture);
+    });
+
+    it('reads whichever map the workspace says is active', async () => {
+      localStorage.setItem(
+        WORKSPACE_KEY,
+        JSON.stringify({
+          activeMapId: 'm2',
+          maps: [{ id: 'm2', name: 'Second', createdAt: '', updatedAt: '' }],
+        }),
+      );
+      localStorage.setItem(mapStorageKey('m2'), JSON.stringify(mockArchitecture));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ nonsense: true }));
+
+      await expect(adapter.load()).resolves.toEqual(mockArchitecture);
+    });
+
+    it('writes to the active map, not the one it started on', async () => {
+      localStorage.setItem(
+        WORKSPACE_KEY,
+        JSON.stringify({
+          activeMapId: 'm2',
+          maps: [{ id: 'm2', name: 'Second', createdAt: '', updatedAt: '' }],
+        }),
+      );
+
+      await adapter.save(mockArchitecture);
+
+      expect(localStorage.getItem(mapStorageKey('m2'))).not.toBeNull();
+      expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+    });
+
+    it('follows a switch made after it was constructed', async () => {
+      await adapter.save(mockArchitecture);
+      expect(localStorage.getItem(STORAGE_KEY)).not.toBeNull();
+
+      localStorage.setItem(
+        WORKSPACE_KEY,
+        JSON.stringify({
+          activeMapId: 'm2',
+          maps: [{ id: 'm2', name: 'Second', createdAt: '', updatedAt: '' }],
+        }),
+      );
+
+      await expect(adapter.load()).resolves.toBeNull();
+    });
+
+    it('can be pinned to one map regardless of what is active', async () => {
+      localStorage.setItem(
+        WORKSPACE_KEY,
+        JSON.stringify({
+          activeMapId: 'm2',
+          maps: [{ id: 'm2', name: 'Second', createdAt: '', updatedAt: '' }],
+        }),
+      );
+      const pinned = new LocalStorageAdapter({ mapId: 'm3' });
+
+      await pinned.save(mockArchitecture);
+
+      expect(localStorage.getItem(mapStorageKey('m3'))).not.toBeNull();
+      expect(localStorage.getItem(mapStorageKey('m2'))).toBeNull();
     });
   });
 });

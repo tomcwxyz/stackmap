@@ -78,6 +78,44 @@ export const CostModelSchema = z.enum(['subscription', 'perpetual', 'free', 'unk
 
 export const MappingPathSchema = z.enum(['function_first', 'service_first']);
 
+export const ExternalPartyTypeSchema = z.enum([
+  'funder',
+  'regulator',
+  'auditor',
+  'partner',
+  'supplier',
+  'other',
+]);
+
+export const PartyLocationSchema = z.enum(['uk', 'eea', 'rest_of_world', 'unknown']);
+
+export const DataFlowMethodSchema = z.enum([
+  'api',
+  'file_transfer',
+  'portal',
+  'email',
+  'post',
+  'manual',
+  'unknown',
+]);
+
+export const DataFlowFrequencySchema = z.enum([
+  'real_time',
+  'scheduled',
+  'on_demand',
+  'annual',
+  'unknown',
+]);
+
+export const LawfulBasisSchema = z.enum([
+  'consent',
+  'contract',
+  'legal_obligation',
+  'vital_interests',
+  'public_task',
+  'legitimate_interests',
+]);
+
 // ─── TechFreedom schemas ───
 
 export const TechFreedomScoreSchema = z.object({
@@ -123,10 +161,13 @@ export const ServiceSchema = z.object({
   systemIds: z.array(z.string()).default([]),
 });
 
+export const CostSourceSchema = z.enum(['user', 'estimate', 'spend']);
+
 export const CostSchema = z.object({
   amount: z.number().min(0),
   period: CostPeriodSchema,
   model: CostModelSchema,
+  source: CostSourceSchema.optional(),
 });
 
 export const SystemSchema = z.object({
@@ -145,6 +186,13 @@ export const SystemSchema = z.object({
   techFreedomScore: TechFreedomScoreSchema.optional(),
   importance: z.number().min(1).max(10).optional(),
   isShadow: z.boolean().optional(),
+  seats: z.number().min(0).optional(),
+  // Plain calendar date, so a renewal does not shift around with time zones
+  renewalDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected a date in YYYY-MM-DD form')
+    .optional(),
+  noticePeriodDays: z.number().min(0).optional(),
 });
 
 export const DataCategorySchema = z.object({
@@ -153,6 +201,9 @@ export const DataCategorySchema = z.object({
   sensitivity: SensitivitySchema,
   containsPersonalData: z.boolean(),
   systemIds: z.array(z.string()),
+  subjects: z.string().optional(),
+  retention: z.string().optional(),
+  lawfulBasis: LawfulBasisSchema.optional(),
 });
 
 export const IntegrationSchema = z.object({
@@ -164,6 +215,25 @@ export const IntegrationSchema = z.object({
   frequency: FrequencySchema,
   description: z.string().optional(),
   reliability: ReliabilitySchema,
+});
+
+export const ExternalPartySchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  type: ExternalPartyTypeSchema,
+  description: z.string().optional(),
+  location: PartyLocationSchema.optional(),
+  contactInfo: z.string().optional(),
+});
+
+export const DataFlowSchema = z.object({
+  id: z.string().min(1),
+  systemId: z.string().min(1),
+  partyId: z.string().min(1),
+  dataCategoryIds: z.array(z.string()),
+  purpose: z.string().optional(),
+  method: DataFlowMethodSchema,
+  frequency: DataFlowFrequencySchema,
 });
 
 export const OwnerSchema = z.object({
@@ -190,5 +260,19 @@ export const ArchitectureSchema = z.object({
   dataCategories: z.array(DataCategorySchema),
   integrations: z.array(IntegrationSchema),
   owners: z.array(OwnerSchema),
+  externalParties: z.array(ExternalPartySchema),
+  dataFlows: z.array(DataFlowSchema),
   metadata: ArchitectureMetadataSchema,
+});
+
+/**
+ * Schema for architectures read back out of storage.
+ *
+ * Identical to ArchitectureSchema except that the organisation name may be
+ * empty: a map is created before the user has typed one, and a half-finished
+ * map must survive a page reload. Imported files still go through the strict
+ * schema, where a name is required.
+ */
+export const StoredArchitectureSchema = ArchitectureSchema.extend({
+  organisation: OrganisationSchema.extend({ name: z.string() }),
 });

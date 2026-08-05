@@ -1,15 +1,9 @@
 import type { Architecture, System } from '@/lib/types';
-import { calculateCostSummary, formatCurrency } from '@/lib/cost-analysis';
+import { annualiseCost, calculateCostSummary, formatCurrency } from '@/lib/cost-analysis';
 import { totalScore, riskLevel } from '@/lib/techfreedom/risk';
+import { buildRiskImportanceMatrix, QUADRANTS } from '@/lib/analysis/risk-importance';
 
 // ─── Helpers ───
-
-function annualise(system: System): number {
-  if (!system.cost) return 0;
-  if (system.cost.model === 'free') return 0;
-  if (system.cost.period === 'monthly') return system.cost.amount * 12;
-  return system.cost.amount;
-}
 
 function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
@@ -86,7 +80,7 @@ export function generateMarkdownExport(arch: Architecture): string {
     for (const sys of systems) {
       const ownerObj = sys.ownerId ? owners.find((o) => o.id === sys.ownerId) : undefined;
       const ownerStr = ownerObj ? ownerObj.name : '\u2014';
-      const annual = annualise(sys);
+      const annual = annualiseCost(sys);
       const costStr = sys.cost
         ? sys.cost.model === 'free'
           ? 'Free'
@@ -137,13 +131,15 @@ export function generateMarkdownExport(arch: Architecture): string {
   if (integrations.length > 0) {
     lines.push('## Integrations');
     lines.push('');
-    lines.push('| From | To | Type | Direction | Frequency |');
-    lines.push('|------|-----|------|-----------|-----------|');
+    lines.push('| From | To | Type | Direction | Frequency | Reliability |');
+    lines.push('|------|-----|------|-----------|-----------|-------------|');
     for (const intg of integrations) {
       const source = systems.find((s) => s.id === intg.sourceSystemId)?.name ?? 'Unknown';
       const target = systems.find((s) => s.id === intg.targetSystemId)?.name ?? 'Unknown';
       const dir = intg.direction === 'two_way' ? 'Two-way' : 'One-way';
-      lines.push(`| ${source} | ${target} | ${formatType(intg.type)} | ${dir} | ${formatType(intg.frequency)} |`);
+      lines.push(
+        `| ${source} | ${target} | ${formatType(intg.type)} | ${dir} | ${formatType(intg.frequency)} | ${formatType(intg.reliability ?? 'unknown')} |`,
+      );
     }
     lines.push('');
   }
@@ -209,6 +205,29 @@ export function generateMarkdownExport(arch: Architecture): string {
       lines.push(`| ${sys.name} | ${formatType(sys.type)} | ${impStr} |`);
     }
     lines.push('');
+  }
+
+  // What to deal with first — risk crossed with importance
+  if (techFreedomEnabled) {
+    const matrix = buildRiskImportanceMatrix(systems);
+    if (matrix.plotted.length > 0) {
+      lines.push('## What to Deal With First');
+      lines.push('');
+      for (const quadrant of QUADRANTS) {
+        const entries = matrix.byQuadrant[quadrant.key];
+        if (entries.length === 0) continue;
+        lines.push(`### ${quadrant.label}`);
+        lines.push('');
+        lines.push(`${quadrant.description}`);
+        lines.push('');
+        for (const entry of entries) {
+          lines.push(
+            `- **${entry.system.name}** — importance ${entry.importance}/10, risk ${entry.riskTotal}/25 (${capitalize(entry.level)})`,
+          );
+        }
+        lines.push('');
+      }
+    }
   }
 
   // Risk Summary (TechFreedom)

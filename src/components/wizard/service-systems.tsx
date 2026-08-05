@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useArchitecture } from '@/hooks/useArchitecture';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import type { SystemType } from '@/lib/types';
+import type { System, SystemType } from '@/lib/types';
 import type { TechFreedomScore, KnownTool } from '@/lib/techfreedom/types';
 import { findMatchingTool } from '@/lib/techfreedom/match';
 import { KNOWN_TOOLS } from '@/lib/techfreedom/tools';
@@ -48,11 +48,8 @@ interface SystemFormData {
   costModel: CostModel;
 }
 
-interface SystemCost {
-  amount: number;
-  period: CostPeriod;
-  model: CostModel;
-}
+/** The shape stored on a system, so the two cannot drift apart. */
+type SystemCost = NonNullable<System['cost']>;
 
 interface SystemEntry {
   id: string;
@@ -190,6 +187,7 @@ export function ServiceSystems() {
         amount: costAmount,
         period: formData.costPeriod,
         model: formData.costModel,
+        source: 'user',
       };
     }
 

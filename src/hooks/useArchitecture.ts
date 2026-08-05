@@ -5,6 +5,8 @@ import {
   useContext,
   useCallback,
   useEffect,
+  useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -18,11 +20,32 @@ import type {
   DataCategory,
   Integration,
   Owner,
+  ExternalParty,
+  DataFlow,
   MappingPath,
 } from '@/lib/types';
-import type { StorageAdapter } from '@/lib/storage/adapter';
+import type { LoadReport, StorageAdapter } from '@/lib/storage/adapter';
 import { LocalStorageAdapter } from '@/lib/storage/local';
+import {
+  StorageStatusProvider,
+  type SaveState,
+  type StorageStatus,
+} from '@/hooks/useStorageStatus';
+import { SCHEMA_VERSION, STACKMAP_VERSION } from '@/lib/version';
 import { v4 as uuidv4 } from 'uuid';
+
+/** How long to wait after the last change before writing to storage. */
+const SAVE_DEBOUNCE_MS = 500;
+
+function describeSaveError(error: unknown): string {
+  const name = error instanceof Error ? error.name : '';
+  const message = error instanceof Error ? error.message : String(error);
+
+  if (name === 'QuotaExceededError' || /quota/i.test(message)) {
+    return 'There is no room left in this browser’s storage, so your map could not be saved.';
+  }
+  return 'Your map could not be saved in this browser.';
+}
 
 // ─── Context value shape ───
 
@@ -50,6 +73,7 @@ export interface ArchitectureContextValue {
 
   // Data categories
   addDataCategory: (dc: Omit<DataCategory, 'id'>) => string;
+  updateDataCategory: (id: string, updates: Partial<Omit<DataCategory, 'id'>>) => void;
   removeDataCategory: (id: string) => void;
 
   // Integrations
@@ -59,6 +83,16 @@ export interface ArchitectureContextValue {
   // Owners
   addOwner: (owner: Omit<Owner, 'id'>) => string;
   removeOwner: (id: string) => void;
+
+  // External parties
+  addExternalParty: (party: Omit<ExternalParty, 'id'>) => string;
+  updateExternalParty: (id: string, updates: Partial<Omit<ExternalParty, 'id'>>) => void;
+  removeExternalParty: (id: string) => void;
+
+  // Data flows
+  addDataFlow: (flow: Omit<DataFlow, 'id'>) => string;
+  updateDataFlow: (id: string, updates: Partial<Omit<DataFlow, 'id'>>) => void;
+  removeDataFlow: (id: string) => void;
 
   // Bulk replace
   replaceArchitecture: (arch: Architecture) => void;
@@ -92,10 +126,12 @@ function createBlankArchitecture(mappingPath: MappingPath = 'function_first'): A
     dataCategories: [],
     integrations: [],
     owners: [],
+    externalParties: [],
+    dataFlows: [],
     metadata: {
-      version: '1.0.0',
+      version: SCHEMA_VERSION,
       exportedAt: now,
-      stackmapVersion: '0.1.0',
+      stackmapVersion: STACKMAP_VERSION,
       mappingPath,
       techFreedomEnabled: false,
     },
@@ -117,18 +153,28 @@ export function ArchitectureProvider({
   adapter,
   mappingPath = 'function_first',
 }: ArchitectureProviderProps) {
-  const storageAdapter = adapter ?? new LocalStorageAdapter();
+  // The adapter owns a storage handle, so it must survive re-renders.
+  const [storageAdapter] = useState<StorageAdapter>(
+    () => adapter ?? new LocalStorageAdapter(),
+  );
   const [architecture, setArchitecture] = useState<Architecture | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [saveState, setSaveState] = useState<SaveState>('idle');
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [loadReport, setLoadReport] = useState<LoadReport | null>(null);
 
   // Load from storage on mount
   useEffect(() => {
     let cancelled = false;
     storageAdapter.load().then((loaded) => {
-      if (!cancelled) {
-        setArchitecture(loaded ?? createBlankArchitecture(mappingPath));
-        setIsLoading(false);
+      if (cancelled) return;
+      setArchitecture(loaded ?? createBlankArchitecture(mappingPath));
+      const report = storageAdapter.getLastLoadReport?.() ?? null;
+      // Only worth reporting when something was actually lost
+      if (report && (report.backedUp || report.droppedCount > 0)) {
+        setLoadReport(report);
       }
+      setIsLoading(false);
     });
     return () => {
       cancelled = true;
@@ -136,13 +182,68 @@ export function ArchitectureProvider({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-save to storage whenever architecture changes
+  // Auto-save to storage whenever architecture changes.
+  //
+  // Debounced because edits arrive keystroke-by-keystroke and each write
+  // serialises the whole document. Failures are surfaced rather than swallowed:
+  // a full quota means the user is one tab-close away from losing their work
+  // and needs to be told to export.
+  const persist = useCallback(
+    async (arch: Architecture) => {
+      try {
+        await storageAdapter.save(arch);
+        setSaveState('saved');
+        setSaveError(null);
+      } catch (error) {
+        setSaveState('error');
+        setSaveError(describeSaveError(error));
+      }
+    },
+    [storageAdapter],
+  );
+
+  const pendingSaveRef = useRef<Architecture | null>(null);
+
   useEffect(() => {
-    if (!isLoading && architecture) {
-      storageAdapter.save(architecture);
+    if (isLoading || !architecture) return;
+
+    pendingSaveRef.current = architecture;
+    const timer = setTimeout(() => {
+      pendingSaveRef.current = null;
+      void persist(architecture);
+    }, SAVE_DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
+  }, [architecture, isLoading, persist]);
+
+  const flushPendingSave = useCallback(() => {
+    const pending = pendingSaveRef.current;
+    if (!pending) return;
+    pendingSaveRef.current = null;
+    void storageAdapter.save(pending).catch(() => {
+      // Nothing can be shown at this point — the page or tree is going away.
+    });
+  }, [storageAdapter]);
+
+  // Never leave a debounced change unwritten when the provider goes away.
+  useEffect(() => flushPendingSave, [flushPendingSave]);
+
+  // A reload or a closed tab does not unmount the tree, so the debounce has to
+  // be flushed against the page going away as well. pagehide and a hidden
+  // document are the two signals that fire reliably, including on mobile.
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'hidden') flushPendingSave();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [architecture, isLoading]);
+
+    window.addEventListener('pagehide', flushPendingSave);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('pagehide', flushPendingSave);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [flushPendingSave]);
 
   // Generic updater that bumps organisation.updatedAt
   const updateArch = useCallback(
@@ -290,6 +391,18 @@ export function ArchitectureProvider({
     [updateArch],
   );
 
+  const updateDataCategory = useCallback(
+    (id: string, updates: Partial<Omit<DataCategory, 'id'>>) => {
+      updateArch((prev) => ({
+        ...prev,
+        dataCategories: prev.dataCategories.map((dc) =>
+          dc.id === id ? { ...dc, ...updates } : dc,
+        ),
+      }));
+    },
+    [updateArch],
+  );
+
   const removeDataCategory = useCallback(
     (id: string) => {
       updateArch((prev) => ({
@@ -348,6 +461,78 @@ export function ArchitectureProvider({
     [updateArch],
   );
 
+  // ─── External parties ───
+
+  const addExternalParty = useCallback(
+    (party: Omit<ExternalParty, 'id'>): string => {
+      const id = uuidv4();
+      updateArch((prev) => ({
+        ...prev,
+        externalParties: [...prev.externalParties, { ...party, id }],
+      }));
+      return id;
+    },
+    [updateArch],
+  );
+
+  const updateExternalParty = useCallback(
+    (id: string, updates: Partial<Omit<ExternalParty, 'id'>>) => {
+      updateArch((prev) => ({
+        ...prev,
+        externalParties: prev.externalParties.map((p) =>
+          p.id === id ? { ...p, ...updates } : p,
+        ),
+      }));
+    },
+    [updateArch],
+  );
+
+  const removeExternalParty = useCallback(
+    (id: string) => {
+      updateArch((prev) => ({
+        ...prev,
+        externalParties: prev.externalParties.filter((p) => p.id !== id),
+        // A flow to a party that no longer exists is meaningless
+        dataFlows: prev.dataFlows.filter((f) => f.partyId !== id),
+      }));
+    },
+    [updateArch],
+  );
+
+  // ─── Data flows ───
+
+  const addDataFlow = useCallback(
+    (flow: Omit<DataFlow, 'id'>): string => {
+      const id = uuidv4();
+      updateArch((prev) => ({
+        ...prev,
+        dataFlows: [...prev.dataFlows, { ...flow, id }],
+      }));
+      return id;
+    },
+    [updateArch],
+  );
+
+  const updateDataFlow = useCallback(
+    (id: string, updates: Partial<Omit<DataFlow, 'id'>>) => {
+      updateArch((prev) => ({
+        ...prev,
+        dataFlows: prev.dataFlows.map((f) => (f.id === id ? { ...f, ...updates } : f)),
+      }));
+    },
+    [updateArch],
+  );
+
+  const removeDataFlow = useCallback(
+    (id: string) => {
+      updateArch((prev) => ({
+        ...prev,
+        dataFlows: prev.dataFlows.filter((f) => f.id !== id),
+      }));
+    },
+    [updateArch],
+  );
+
   // ─── Bulk replace ───
 
   const replaceArchitecture = useCallback((arch: Architecture) => {
@@ -370,16 +555,20 @@ export function ArchitectureProvider({
 
   const save = useCallback(async () => {
     if (architecture) {
-      await storageAdapter.save(architecture);
+      pendingSaveRef.current = null;
+      await persist(architecture);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [architecture]);
+  }, [architecture, persist]);
 
   const clear = useCallback(async () => {
+    pendingSaveRef.current = null;
     await storageAdapter.clear();
     setArchitecture(createBlankArchitecture(mappingPath));
+    setLoadReport(null);
+    setSaveState('idle');
+    setSaveError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [storageAdapter]);
 
   const getArchitecture = useCallback(() => architecture, [architecture]);
 
@@ -397,11 +586,18 @@ export function ArchitectureProvider({
     updateSystem,
     removeSystem,
     addDataCategory,
+    updateDataCategory,
     removeDataCategory,
     addIntegration,
     removeIntegration,
     addOwner,
     removeOwner,
+    addExternalParty,
+    updateExternalParty,
+    removeExternalParty,
+    addDataFlow,
+    updateDataFlow,
+    removeDataFlow,
     replaceArchitecture,
     setTechFreedomEnabled,
     save,
@@ -409,7 +605,16 @@ export function ArchitectureProvider({
     getArchitecture,
   };
 
-  return createElement(ArchitectureContext.Provider, { value }, children);
+  const storageStatus: StorageStatus = useMemo(
+    () => ({ saveState, saveError, loadReport }),
+    [saveState, saveError, loadReport],
+  );
+
+  return createElement(
+    ArchitectureContext.Provider,
+    { value },
+    createElement(StorageStatusProvider, { value: storageStatus }, children),
+  );
 }
 
 // ─── Hook ───

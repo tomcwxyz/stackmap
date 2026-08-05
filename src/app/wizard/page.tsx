@@ -4,6 +4,8 @@ import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useArchitecture } from '@/hooks/useArchitecture';
 import { ImportDialog } from '@/components/import/import-dialog';
+import { addSpendToArchitecture } from '@/lib/import';
+import type { SpendMatch } from '@/lib/import';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import type { Organisation } from '@/lib/types';
@@ -50,6 +52,18 @@ export default function PathSelectorPage() {
       architecture.integrations.length +
       architecture.owners.length
     : 0;
+
+  // Spend adds systems to the map rather than replacing it, so it needs its
+  // own handler even here, where the map is usually empty.
+  const handleImportSpend = useCallback(
+    (matches: SpendMatch[]) => {
+      if (!architecture) return;
+      const { architecture: next } = addSpendToArchitecture(matches, architecture);
+      replaceArchitecture(next);
+      setShowImport(false);
+    },
+    [architecture, replaceArchitecture],
+  );
 
   const handleClear = async () => {
     await clear();
@@ -198,7 +212,6 @@ export default function PathSelectorPage() {
       <ul
         className={`space-y-4 list-none p-0 m-0 ${!orgHasName ? 'opacity-50 pointer-events-none' : ''}`}
         aria-label="Mapping path options"
-        aria-disabled={!orgHasName}
       >
         {/* Recommended path */}
         <li>
@@ -291,11 +304,13 @@ export default function PathSelectorPage() {
 
       <ImportDialog
         open={showImport}
+        existingArchitecture={architecture}
         onClose={() => setShowImport(false)}
         onImport={(arch) => {
           replaceArchitecture(arch);
           setShowImport(false);
         }}
+        onImportSpend={handleImportSpend}
       />
     </div>
   );

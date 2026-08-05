@@ -28,7 +28,7 @@ export function FunctionTagger() {
   const router = useRouter();
   const { architecture, addFunction, removeFunction, updateSystem } = useArchitecture();
 
-  const systems = architecture?.systems ?? [];
+  const systems = useMemo(() => architecture?.systems ?? [], [architecture]);
 
   // Track which standard function types are selected — hydrate from architecture on re-visit
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(() => {

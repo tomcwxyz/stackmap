@@ -18,13 +18,18 @@ export function MermaidRenderer({ syntax, id = 'mermaid-diagram' }: MermaidRende
     async function renderDiagram() {
       try {
         const mermaid = (await import('mermaid')).default;
+        // Labels come from user data, including imported files, and the
+        // rendered SVG is injected into the page. Strict mode plus SVG text
+        // labels keeps that data from being treated as markup — and SVG text
+        // also rasterises properly in the PNG export below, which foreignObject
+        // labels did not.
         mermaid.initialize({
           startOnLoad: false,
           theme: 'default',
-          securityLevel: 'loose',
+          securityLevel: 'strict',
           flowchart: {
             useMaxWidth: true,
-            htmlLabels: true,
+            htmlLabels: false,
             curve: 'basis',
           },
         });
@@ -50,6 +55,22 @@ export function MermaidRenderer({ syntax, id = 'mermaid-diagram' }: MermaidRende
       cancelled = true;
     };
   }, [syntax, id]);
+
+  const handleExportSvg = useCallback(() => {
+    if (!svgContent) return;
+
+    // The SVG is what Mermaid already produced, so this export is exact —
+    // no canvas, no rasterising, and it stays sharp at any size.
+    const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.download = 'stackmap-diagram.svg';
+    link.href = url;
+    link.click();
+
+    URL.revokeObjectURL(url);
+  }, [svgContent]);
 
   const handleExportPng = useCallback(async () => {
     if (!svgContent || !containerRef.current) return;
@@ -108,14 +129,25 @@ export function MermaidRenderer({ syntax, id = 'mermaid-diagram' }: MermaidRende
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={handleExportSvg}
+          disabled={!svgContent}
+          className="btn-secondary text-sm px-3 py-1.5 inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+            <path d="M2 10v2h10v-2M7 2v7M4 6l3 3 3-3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Export as SVG
+        </button>
         <button
           type="button"
           onClick={handleExportPng}
           disabled={!svgContent}
           className="btn-secondary text-sm px-3 py-1.5 inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
             <path d="M2 10v2h10v-2M7 2v7M4 6l3 3 3-3" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           Export as PNG

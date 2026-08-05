@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useArchitecture } from '@/hooks/useArchitecture';
@@ -28,13 +28,25 @@ const FREQUENCY_OPTIONS = [
   { value: 'unknown', label: 'Unknown' },
 ] as const;
 
+const RELIABILITY_OPTIONS = [
+  { value: 'reliable', label: 'Reliable \u2014 it just works' },
+  { value: 'fragile', label: 'Fragile \u2014 it breaks or needs chasing' },
+  { value: 'unknown', label: "Don't know" },
+] as const;
+
 interface IntegrationDraft {
   sourceSystemId: string;
   targetSystemId: string;
   type: 'api' | 'file_transfer' | 'manual' | 'webhook' | 'database_link' | 'unknown';
   direction: 'one_way' | 'two_way';
   frequency: 'real_time' | 'scheduled' | 'on_demand' | 'unknown';
+  reliability: 'reliable' | 'fragile' | 'unknown';
   description: string;
+}
+
+/** An added connection, carrying the id it was given in the architecture. */
+interface IntegrationEntry extends IntegrationDraft {
+  id: string;
 }
 
 const EMPTY_DRAFT: IntegrationDraft = {
@@ -43,6 +55,7 @@ const EMPTY_DRAFT: IntegrationDraft = {
   type: 'unknown',
   direction: 'one_way',
   frequency: 'unknown',
+  reliability: 'unknown',
   description: '',
 };
 
@@ -53,19 +66,23 @@ export function IntegrationMatrix() {
   const { architecture, addIntegration, removeIntegration } = useArchitecture();
 
   const [draft, setDraft] = useState<IntegrationDraft>(EMPTY_DRAFT);
-  // Hydrate from architecture on re-visit
-  const [added, setAdded] = useState<IntegrationDraft[]>(() => {
+  // Local mirror of the architecture's integrations, keyed by the id each was
+  // given when it was added. Connections are written straight through, so
+  // leaving this step by any route keeps what has been entered.
+  const [added, setAdded] = useState<IntegrationEntry[]>(() => {
     return (architecture?.integrations ?? []).map((intg) => ({
+      id: intg.id,
       sourceSystemId: intg.sourceSystemId,
       targetSystemId: intg.targetSystemId,
       type: intg.type,
       direction: intg.direction,
       frequency: intg.frequency,
+      reliability: intg.reliability ?? 'unknown',
       description: intg.description ?? '',
     }));
   });
 
-  const systems = architecture?.systems ?? [];
+  const systems = useMemo(() => architecture?.systems ?? [], [architecture]);
 
   const updateField = useCallback(
     <K extends keyof IntegrationDraft>(field: K, value: IntegrationDraft[K]) => {
@@ -77,13 +94,29 @@ export function IntegrationMatrix() {
   const handleAdd = useCallback(() => {
     if (!draft.sourceSystemId || !draft.targetSystemId) return;
     if (draft.sourceSystemId === draft.targetSystemId) return;
-    setAdded((prev) => [...prev, { ...draft, description: draft.description.trim() }]);
-    setDraft(EMPTY_DRAFT);
-  }, [draft]);
 
-  const handleRemove = useCallback((index: number) => {
-    setAdded((prev) => prev.filter((_, i) => i !== index));
-  }, []);
+    const connection = { ...draft, description: draft.description.trim() };
+    const id = addIntegration({
+      sourceSystemId: connection.sourceSystemId,
+      targetSystemId: connection.targetSystemId,
+      type: connection.type,
+      direction: connection.direction,
+      frequency: connection.frequency,
+      description: connection.description || undefined,
+      reliability: connection.reliability,
+    });
+
+    setAdded((prev) => [...prev, { ...connection, id }]);
+    setDraft(EMPTY_DRAFT);
+  }, [draft, addIntegration]);
+
+  const handleRemove = useCallback(
+    (id: string) => {
+      removeIntegration(id);
+      setAdded((prev) => prev.filter((intg) => intg.id !== id));
+    },
+    [removeIntegration],
+  );
 
   const getSystemName = useCallback(
     (id: string) => systems.find((s) => s.id === id)?.name ?? 'Unknown',
@@ -91,25 +124,8 @@ export function IntegrationMatrix() {
   );
 
   const handleContinue = useCallback(() => {
-    // Clear existing integrations to avoid duplicates on re-visit
-    const existingIntegrations = architecture?.integrations ?? [];
-    for (const intg of existingIntegrations) {
-      removeIntegration(intg.id);
-    }
-
-    for (const intg of added) {
-      addIntegration({
-        sourceSystemId: intg.sourceSystemId,
-        targetSystemId: intg.targetSystemId,
-        type: intg.type,
-        direction: intg.direction,
-        frequency: intg.frequency,
-        description: intg.description || undefined,
-        reliability: 'unknown',
-      });
-    }
     router.push(`${basePath}/owners`);
-  }, [added, addIntegration, removeIntegration, architecture, router, basePath]);
+  }, [router, basePath]);
 
   if (!architecture) {
     return (
@@ -179,9 +195,9 @@ export function IntegrationMatrix() {
             Connections added
           </h2>
           <ul className="space-y-2" role="list">
-            {added.map((intg, index) => (
+            {added.map((intg) => (
               <li
-                key={index}
+                key={intg.id}
                 className="flex items-center justify-between bg-white border border-surface-200 rounded-lg p-3"
               >
                 <div className="break-words min-w-0">
@@ -197,10 +213,15 @@ export function IntegrationMatrix() {
                   <span className="text-sm text-primary-500 ml-2">
                     ({INTEGRATION_TYPES.find((t) => t.value === intg.type)?.label})
                   </span>
+                  {intg.reliability === 'fragile' && (
+                    <span className="text-xs bg-amber-100 text-amber-800 rounded px-1.5 py-0.5 ml-2 font-medium">
+                      Fragile
+                    </span>
+                  )}
                 </div>
                 <button
                   type="button"
-                  onClick={() => handleRemove(index)}
+                  onClick={() => handleRemove(intg.id)}
                   aria-label={`Remove connection between ${getSystemName(intg.sourceSystemId)} and ${getSystemName(intg.targetSystemId)}`}
                   className="text-primary-400 hover:text-red-600 transition-colors p-1"
                 >
@@ -282,6 +303,19 @@ export function IntegrationMatrix() {
             onChange={(e) => updateField('frequency', e.target.value as IntegrationDraft['frequency'])}
           >
             {FREQUENCY_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </Select>
+
+          <Select
+            id="integration-reliability"
+            label="How well does it work?"
+            value={draft.reliability}
+            onChange={(e) => updateField('reliability', e.target.value as IntegrationDraft['reliability'])}
+          >
+            {RELIABILITY_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>

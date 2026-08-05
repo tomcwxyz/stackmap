@@ -6,6 +6,7 @@ import {
   DEFAULT_STAFF,
   SIZE_MULTIPLIERS,
   type OrgSize,
+  resolveStaffCount,
 } from '@/lib/cost-estimates';
 import type { ToolPricing, PricingTier } from '@/lib/techfreedom/types';
 
@@ -133,9 +134,17 @@ describe('selectTier', () => {
     { name: 'Enterprise', annualPerSeat: 200, minUsers: 50 },
   ];
 
-  it('picks the recommended tier when eligible', () => {
+  it('picks the recommended tier for very small teams', () => {
+    const result = selectTier(tiers, 3);
+    // Only Free is eligible at 3 users, and it is the recommended tier
+    expect(result?.name).toBe('Free');
+  });
+
+  it('prefers the cheapest paid tier over a free tier once past 3 users', () => {
     const result = selectTier(tiers, 5);
-    expect(result?.name).toBe('Free'); // both Free and Pro are eligible, but Free is recommended
+    // Free and Pro are both eligible, but an org with real staff will be
+    // on paid licences rather than 5 free accounts
+    expect(result?.name).toBe('Pro');
   });
 
   it('picks cheapest eligible when no recommended tier fits', () => {
@@ -216,5 +225,23 @@ describe('SIZE_MULTIPLIERS (backward compatibility)', () => {
 
   it('uses 1.0 as the base for small', () => {
     expect(SIZE_MULTIPLIERS.small).toBe(1.0);
+  });
+});
+
+describe('resolveStaffCount', () => {
+  it('uses the staff count the organisation gave', () => {
+    expect(resolveStaffCount({ staffCount: 42, size: 'micro' })).toBe(42);
+  });
+
+  it('falls back to the size band when staff count is missing', () => {
+    expect(resolveStaffCount({ size: 'medium' })).toBe(DEFAULT_STAFF.medium);
+  });
+
+  it('ignores a zero staff count, which tells us nothing', () => {
+    expect(resolveStaffCount({ staffCount: 0, size: 'large' })).toBe(DEFAULT_STAFF.large);
+  });
+
+  it('assumes a small organisation when neither is known', () => {
+    expect(resolveStaffCount({})).toBe(DEFAULT_STAFF.small);
   });
 });

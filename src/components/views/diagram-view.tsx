@@ -123,6 +123,21 @@ export function DiagramView({ architecture, isLoading }: DiagramViewProps) {
 
         <div className="flex items-center gap-3">
           <Link
+            href="/view/report"
+            className="btn-secondary text-sm px-3 py-1.5 inline-flex items-center gap-1.5"
+          >
+            Board report
+          </Link>
+          <Link
+            href="/view/systems"
+            className="btn-secondary text-sm px-3 py-1.5 inline-flex items-center gap-1.5"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+              <path d="M2 3h10M2 7h10M2 11h10" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Your systems
+          </Link>
+          <Link
             href={reviewPath}
             className="btn-secondary text-sm px-3 py-1.5 inline-flex items-center gap-1.5"
           >
@@ -140,7 +155,10 @@ export function DiagramView({ architecture, isLoading }: DiagramViewProps) {
         if (cs.systemCount === 0) return null;
         return (
           <p className="text-sm text-primary-600 mb-4" data-testid="diagram-cost-summary">
-            Total annual cost: {formatCurrency(cs.totalAnnual)} across {cs.systemCount} {cs.systemCount === 1 ? 'system' : 'systems'}
+            Total annual cost: {formatCurrency(cs.totalAnnual)} across{' '}
+            {cs.systemCount} of {architecture.systems.length}{' '}
+            {architecture.systems.length === 1 ? 'system' : 'systems'}
+            {cs.uncostCount > 0 && ' with cost recorded'}
           </p>
         );
       })()}

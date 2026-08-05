@@ -27,7 +27,7 @@ export function validateArchitectureJson(raw: string): ValidationResult {
   }
 
   // Strip computed fields that exports add
-  const { costSummary, overlaps, riskSummary, ...rest } = parsed as Record<string, unknown>;
+  const { costSummary, overlaps, duplication, riskSummary, ...rest } = parsed as Record<string, unknown>;
 
   const result = ArchitectureSchema.safeParse(rest);
   if (!result.success) {

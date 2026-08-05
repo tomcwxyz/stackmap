@@ -387,6 +387,8 @@ describe('Zod Schemas', () => {
         ],
         integrations: [],
         owners: [],
+        externalParties: [],
+        dataFlows: [],
         metadata: {
           version: '1.0.0',
           exportedAt: '2024-01-01T00:00:00Z',
@@ -412,6 +414,8 @@ describe('Zod Schemas', () => {
         dataCategories: [],
         integrations: [],
         owners: [],
+        externalParties: [],
+        dataFlows: [],
         metadata: {
           version: '1.0.0',
           exportedAt: '2024-01-01T00:00:00Z',
@@ -437,6 +441,8 @@ describe('Zod Schemas', () => {
         dataCategories: [],
         integrations: [],
         owners: [],
+        externalParties: [],
+        dataFlows: [],
         metadata: {
           version: '1.0.0',
           exportedAt: '2024-01-01T00:00:00Z',

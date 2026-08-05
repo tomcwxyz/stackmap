@@ -40,3 +40,9 @@ stackmap-spec.md
 *.tsbuildinfo
 next-env.d.ts
 .worktrees/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
