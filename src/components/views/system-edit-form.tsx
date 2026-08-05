@@ -4,8 +4,9 @@ import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { CheckboxGroup } from '@/components/ui/checkbox-group';
 import { RiskDetails } from '@/components/techfreedom/risk-details';
-import type { Owner, System, SystemType, TechFreedomScore } from '@/lib/types';
+import type { OrgFunction, Owner, System, SystemType, TechFreedomScore } from '@/lib/types';
 
 /** Middle of the 1-5 range, so a hand-scored system starts from neutral. */
 const NEUTRAL_SCORE: TechFreedomScore = {
@@ -61,6 +62,8 @@ const COST_MODELS: { value: NonNullable<System['cost']>['model']; label: string 
 export interface SystemEditFormProps {
   system: System;
   owners: Owner[];
+  /** Everything the map does, so a system can be put where it belongs. */
+  functions: OrgFunction[];
   /** Whether to offer risk scoring for this system. */
   techFreedomEnabled?: boolean;
   onSave: (updates: Partial<Omit<System, 'id'>>) => void;
@@ -74,6 +77,7 @@ interface Draft {
   url: string;
   hosting: System['hosting'];
   status: System['status'];
+  functionIds: string[];
   ownerId: string;
   costAmount: string;
   costPeriod: 'monthly' | 'annual';
@@ -95,6 +99,7 @@ function toDraft(system: System): Draft {
     url: system.url ?? '',
     hosting: system.hosting,
     status: system.status,
+    functionIds: [...system.functionIds],
     ownerId: system.ownerId ?? '',
     costAmount: system.cost ? String(system.cost.amount) : '',
     costPeriod: system.cost?.period ?? 'annual',
@@ -132,6 +137,7 @@ function toUpdates(draft: Draft, original: System): Partial<Omit<System, 'id'>> 
     url: draft.url.trim() || undefined,
     hosting: draft.hosting,
     status: draft.status,
+    functionIds: draft.functionIds,
     ownerId: draft.ownerId || undefined,
     cost:
       !isNaN(amount) && amount >= 0
@@ -164,6 +170,7 @@ function toUpdates(draft: Draft, original: System): Partial<Omit<System, 'id'>> 
 export function SystemEditForm({
   system,
   owners,
+  functions,
   techFreedomEnabled = false,
   onSave,
   onCancel,
@@ -266,6 +273,17 @@ export function SystemEditForm({
             </option>
           ))}
         </Select>
+
+        {functions.length > 0 && (
+          <div className="sm:col-span-2">
+            <CheckboxGroup
+              legend="What it is used for"
+              items={functions.map((fn) => ({ value: fn.id, label: fn.name }))}
+              value={draft.functionIds}
+              onChange={(ids) => update('functionIds', ids)}
+            />
+          </div>
+        )}
 
         <Input
           id={`sys-importance-${system.id}`}

@@ -194,6 +194,38 @@ test.describe('the systems inventory', () => {
     await expect(statusCell).toBeVisible();
   });
 
+  test('assigns a function to a system, and the diagram follows', async ({ page }) => {
+    // The diagram groups systems into function subgraphs; a system with no
+    // function is drawn loose. Until now the only way to attach one was to
+    // walk the wizard's systems step again.
+    await startWizard(page);
+    await skipRiskAssessment(page);
+    await pickFunctions(page, ['Finance']);
+    await addSystem(page, 'Xero');
+
+    await page.goto('/view/systems');
+    await page.getByRole('button', { name: 'Edit Xero' }).click();
+
+    const finance = page.getByRole('checkbox', { name: 'Finance' });
+    await expect(finance).toBeChecked();
+
+    // The Function column, which is the third — the second is the system's
+    // type, which says "Finance" for Xero whatever it is used for
+    const functionCell = page.getByRole('row').last().getByRole('cell').nth(2);
+    await expect(functionCell).toHaveText('Finance');
+
+    // Detach it, and the table stops reporting a function for it
+    await finance.uncheck();
+    await page.getByRole('button', { name: /save changes/i }).click();
+    await expect(functionCell).toHaveText('—');
+
+    // Put it back
+    await page.getByRole('button', { name: 'Edit Xero' }).click();
+    await page.getByRole('checkbox', { name: 'Finance' }).check();
+    await page.getByRole('button', { name: /save changes/i }).click();
+    await expect(functionCell).toHaveText('Finance');
+  });
+
   test('deletes a system once confirmed', async ({ page }) => {
     await startWizard(page);
     await skipRiskAssessment(page);

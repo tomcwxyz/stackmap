@@ -503,6 +503,10 @@ Some fields are not asked for during the wizard and can only be set from this fo
   way out.
 - **Web address** — where you log in.
 - **Notes** — contract quirks, who set it up, what breaks.
+- **What it is used for** — which functions this system belongs to. The diagrams
+  group systems by function, so a system with none is drawn on its own. This is
+  the only place to change it once a system exists, which matters for anything
+  that arrived from a spend import or a spreadsheet rather than the wizard.
 - **Owner**, **importance** and **cost** can also be corrected here rather than
   going back through the wizard.
 
