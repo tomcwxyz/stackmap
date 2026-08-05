@@ -187,3 +187,30 @@ export function getSuggestedSystems(
     })
     .map(({ name, description }) => ({ name, description }));
 }
+
+/**
+ * Which functions suggest a given tool, best first.
+ *
+ * The inverse of the suggestion lists above, built once. A tool can belong to
+ * several — Slack is offered under both People and Operations — so this
+ * returns all of them rather than picking, and leaves the choosing to whoever
+ * has more context.
+ */
+const SUGGESTED_BY = new Map<string, StandardFunction[]>();
+
+for (const [functionType, entries] of Object.entries(SUGGESTIONS) as [
+  StandardFunction,
+  SuggestionEntry[],
+][]) {
+  for (const entry of entries) {
+    const key = entry.name.trim().toLowerCase();
+    const current = SUGGESTED_BY.get(key) ?? [];
+    if (!current.includes(functionType)) current.push(functionType);
+    SUGGESTED_BY.set(key, current);
+  }
+}
+
+export function getFunctionsSuggesting(systemName: string): StandardFunction[] {
+  return SUGGESTED_BY.get(systemName.trim().toLowerCase()) ?? [];
+}
+

@@ -246,9 +246,85 @@ describe('addSpendToArchitecture', () => {
     const before = architecture([system({ id: 's1', name: 'Salesforce' })]);
     const result = addSpendToArchitecture([match()], before);
 
-    expect(result.architecture.functions).toEqual(before.functions);
     expect(result.architecture.owners).toEqual(before.owners);
+    expect(result.architecture.services).toEqual(before.services);
     expect(result.architecture.systems.map((s) => s.name)).toEqual(['Salesforce', 'Xero']);
+  });
+
+  describe('filing systems under a function', () => {
+    // Imported systems used to arrive attached to nothing, so they sat in an
+    // "Other systems" bucket and had to be added again through the wizard.
+
+    it('files a tool where the wizard would have suggested it', () => {
+      const result = addSpendToArchitecture([match()], architecture());
+
+      const finance = result.architecture.functions.find((f) => f.type === 'finance');
+      expect(finance).toBeDefined();
+      expect(result.architecture.systems[0].functionIds).toEqual([finance!.id]);
+    });
+
+    it('uses a function the map already has rather than making another', () => {
+      const before = architecture();
+      before.functions = [
+        { id: 'fn-existing', name: 'Money', type: 'finance', isActive: true },
+      ];
+
+      const result = addSpendToArchitecture([match()], before);
+
+      expect(result.architecture.functions).toHaveLength(1);
+      expect(result.architecture.systems[0].functionIds).toEqual(['fn-existing']);
+      expect(result.functionsCreated).toEqual([]);
+    });
+
+    it('says which functions it had to create', () => {
+      const result = addSpendToArchitecture([match()], architecture());
+
+      expect(result.functionsCreated).toEqual(['Finance']);
+    });
+
+    it('honours a function the user picked over the one it guessed', () => {
+      const result = addSpendToArchitecture([match()], architecture(), {
+        'XERO LIMITED': 'operations',
+      });
+
+      const operations = result.architecture.functions.find((f) => f.type === 'operations');
+      expect(operations).toBeDefined();
+      expect(result.architecture.systems[0].functionIds).toEqual([operations!.id]);
+      expect(result.architecture.functions.some((f) => f.type === 'finance')).toBe(false);
+    });
+
+    it('leaves a system unattached when the user asked for that', () => {
+      const result = addSpendToArchitecture([match()], architecture(), {
+        'XERO LIMITED': 'none',
+      });
+
+      expect(result.architecture.systems[0].functionIds).toEqual([]);
+      expect(result.functionsCreated).toEqual([]);
+    });
+
+    it('fills in a blank on a system already mapped, without moving it', () => {
+      const placed = architecture([
+        system({ id: 's1', name: 'Xero', functionIds: ['fn-somewhere'] }),
+      ]);
+
+      const result = addSpendToArchitecture([match()], placed);
+
+      expect(result.architecture.systems[0].functionIds).toEqual(['fn-somewhere']);
+      expect(result.functionsCreated).toEqual([]);
+    });
+
+    it('creates each function once, however many tools want it', () => {
+      const result = addSpendToArchitecture(
+        [
+          match({ payee: 'XERO', originalPayee: 'XERO LIMITED' }),
+          match({ payee: 'QUICKBOOKS', originalPayee: 'QUICKBOOKS UK' }),
+        ],
+        architecture(),
+      );
+
+      expect(result.architecture.functions.filter((f) => f.type === 'finance')).toHaveLength(1);
+      expect(result.functionsCreated).toEqual(['Finance']);
+    });
   });
 
   it('is safe to run twice with the same spend', () => {

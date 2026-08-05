@@ -1,5 +1,12 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { Architecture, System, SystemType } from '@/lib/types';
+import type {
+  Architecture,
+  OrgFunction,
+  StandardFunction,
+  System,
+  SystemType,
+} from '@/lib/types';
+import { suggestFunction, standardFunctionName } from './suggest-function';
 import type { SpendMatch } from './parse-spend';
 
 /** Known tool categories mapped onto the system types the wizard uses. */
@@ -34,6 +41,66 @@ export interface SpendImportResult {
   architecture: Architecture;
   added: number;
   updated: number;
+  /** Functions that had to be created to hold the imported systems. */
+  functionsCreated: string[];
+}
+
+/**
+ * Which part of the organisation each imported system belongs to, keyed by the
+ * payee text as it appeared in the file.
+ *
+ * `'none'` means the user chose to leave it unattached. A payee that is absent
+ * falls back to whatever the suggestion is.
+ */
+export type FunctionAssignments = Record<string, StandardFunction | 'none'>;
+
+/**
+ * Find the function to hang a system on, creating it if the map has none.
+ *
+ * A map built by importing spend before touching the wizard has no functions
+ * at all, so refusing to create them would leave every imported system in the
+ * same "Other systems" bucket this is meant to empty. Creating one is visible
+ * in the preview and undone by unpicking it there.
+ */
+function resolveFunction(
+  type: StandardFunction,
+  functions: OrgFunction[],
+  created: string[],
+): string {
+  const existing = functions.find((fn) => fn.type === type);
+  if (existing) return existing.id;
+
+  const fn: OrgFunction = {
+    id: uuidv4(),
+    name: standardFunctionName(type),
+    type,
+    isActive: true,
+  };
+  functions.push(fn);
+  created.push(fn.name);
+  return fn.id;
+}
+
+/**
+ * The function a match should be filed under, honouring the user's choice.
+ *
+ * Returns undefined when there is nothing sensible to suggest, or the user
+ * asked for it to be left unattached.
+ */
+function functionIdFor(
+  match: SpendMatch,
+  type: SystemType,
+  functions: OrgFunction[],
+  created: string[],
+  assignments: FunctionAssignments,
+): string | undefined {
+  const chosen = assignments[match.originalPayee];
+  if (chosen === 'none') return undefined;
+
+  const target = chosen ?? suggestFunction(match.tool?.name ?? match.payee, type).suggested;
+  if (!target) return undefined;
+
+  return resolveFunction(target, functions, created);
 }
 
 /**
@@ -80,12 +147,15 @@ function consolidate(matches: SpendMatch[]): SpendMatch[] {
 export function addSpendToArchitecture(
   matches: SpendMatch[],
   existing: Architecture,
+  assignments: FunctionAssignments = {},
 ): SpendImportResult {
   const systems = existing.systems.map((s) => ({ ...s }));
+  const functions = existing.functions.map((f) => ({ ...f }));
   const byName = new Map(systems.map((s) => [matchKey(s.name), s]));
 
   let added = 0;
   let updated = 0;
+  const functionsCreated: string[] = [];
 
   for (const match of consolidate(matches)) {
     const name = match.tool?.name ?? match.payee;
@@ -106,6 +176,17 @@ export function addSpendToArchitecture(
       if (!current.cost || current.cost.source === 'estimate' || current.cost.source === 'spend') {
         current.cost = cost;
       }
+      // An existing system already sits somewhere; only fill in a blank
+      if (current.functionIds.length === 0) {
+        const functionId = functionIdFor(
+          match,
+          current.type,
+          functions,
+          functionsCreated,
+          assignments,
+        );
+        if (functionId) current.functionIds = [functionId];
+      }
       current.vendor ??= match.tool?.provider;
       current.techFreedomScore ??= match.tool
         ? { ...match.tool.score, isAutoScored: true }
@@ -114,14 +195,17 @@ export function addSpendToArchitecture(
       continue;
     }
 
+    const type = typeFor(match);
+    const functionId = functionIdFor(match, type, functions, functionsCreated, assignments);
+
     const system: System = {
       id: uuidv4(),
       name,
-      type: typeFor(match),
+      type,
       vendor: match.tool?.provider,
       hosting: match.tool ? 'cloud' : 'unknown',
       status: 'active',
-      functionIds: [],
+      functionIds: functionId ? [functionId] : [],
       serviceIds: [],
       cost,
       notes: `Found in spend: ${match.transactions} payment${match.transactions === 1 ? '' : 's'} to "${match.originalPayee}".`,
@@ -139,9 +223,11 @@ export function addSpendToArchitecture(
     architecture: {
       ...existing,
       organisation: { ...existing.organisation, updatedAt: new Date().toISOString() },
+      functions,
       systems,
     },
     added,
     updated,
+    functionsCreated,
   };
 }

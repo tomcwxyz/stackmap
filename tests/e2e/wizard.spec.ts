@@ -294,4 +294,24 @@ test.describe('importing spend', () => {
 
     await expect(page.getByTestId('spend-summary')).toBeVisible();
   });
+
+  test('files imported tools under a function instead of orphaning them', async ({ page }) => {
+    await fillOrganisation(page, 'Sunrise Trust');
+
+    await page.getByRole('button', { name: /^import$/i }).first().click();
+    await page.getByText(/accounting or bank export/i).click();
+    await page.locator('input[type="file"]').setInputFiles(STATEMENT);
+    await expect(page.getByTestId('spend-summary')).toBeVisible();
+
+    // It says up front which functions it is about to add
+    await expect(page.getByTestId('spend-new-functions')).toBeVisible();
+
+    await page.getByRole('button', { name: /^add \d+ systems?$/i }).click();
+
+    // The tool is on the map under a function, not stranded in "Other systems"
+    await page.goto('/wizard/functions/review');
+    const otherSystems = page.getByRole('heading', { name: /other systems/i });
+    await expect(otherSystems).toHaveCount(0);
+  });
 });
+

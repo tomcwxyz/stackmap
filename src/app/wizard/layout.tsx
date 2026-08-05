@@ -8,6 +8,7 @@ import { StorageNotice } from '@/components/layout/storage-notice';
 import { ImportDialog } from '@/components/import/import-dialog';
 import { mergeCsvIntoArchitecture, addSpendToArchitecture } from '@/lib/import';
 import type { CsvSystemRow, SpendMatch } from '@/lib/import';
+import type { FunctionAssignments } from '@/lib/import/spend-to-systems';
 import type { ReactNode } from 'react';
 
 function WizardHeader() {
@@ -21,12 +22,15 @@ function WizardHeader() {
     setShowImport(false);
   }, [architecture, replaceArchitecture]);
 
-  const handleImportSpend = useCallback((matches: SpendMatch[]) => {
-    if (!architecture) return;
-    const { architecture: next } = addSpendToArchitecture(matches, architecture);
-    replaceArchitecture(next);
-    setShowImport(false);
-  }, [architecture, replaceArchitecture]);
+  const handleImportSpend = useCallback(
+    (matches: SpendMatch[], assignments: FunctionAssignments) => {
+      if (!architecture) return;
+      const { architecture: next } = addSpendToArchitecture(matches, architecture, assignments);
+      replaceArchitecture(next);
+      setShowImport(false);
+    },
+    [architecture, replaceArchitecture],
+  );
 
   return (
     <>

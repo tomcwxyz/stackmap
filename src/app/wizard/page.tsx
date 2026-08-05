@@ -6,6 +6,7 @@ import { useArchitecture } from '@/hooks/useArchitecture';
 import { ImportDialog } from '@/components/import/import-dialog';
 import { addSpendToArchitecture } from '@/lib/import';
 import type { SpendMatch } from '@/lib/import';
+import type { FunctionAssignments } from '@/lib/import/spend-to-systems';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import type { Organisation } from '@/lib/types';
@@ -56,9 +57,9 @@ export default function PathSelectorPage() {
   // Spend adds systems to the map rather than replacing it, so it needs its
   // own handler even here, where the map is usually empty.
   const handleImportSpend = useCallback(
-    (matches: SpendMatch[]) => {
+    (matches: SpendMatch[], assignments: FunctionAssignments) => {
       if (!architecture) return;
-      const { architecture: next } = addSpendToArchitecture(matches, architecture);
+      const { architecture: next } = addSpendToArchitecture(matches, architecture, assignments);
       replaceArchitecture(next);
       setShowImport(false);
     },
