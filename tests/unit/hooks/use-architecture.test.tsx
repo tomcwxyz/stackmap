@@ -172,3 +172,84 @@ describe('ArchitectureProvider persistence', () => {
     expect(adapter.saves[0].organisation.name).toBe('One');
   });
 });
+
+describe('removing something other things point at', () => {
+  // A reference to a function that no longer exists is not a grouping, it is
+  // an invisible orphan: the system disappears from the diagram's subgraphs
+  // and turns up under "Other systems" with no explanation.
+  function Harness({ onReady }: { onReady: (ctx: ReturnType<typeof useArchitecture>) => void }) {
+    const ctx = useArchitecture();
+    onReady(ctx);
+    return <span data-testid="systems">{JSON.stringify(ctx.architecture?.systems ?? [])}</span>;
+  }
+
+  async function setUp() {
+    let ctx: ReturnType<typeof useArchitecture> | null = null;
+    render(
+      <ArchitectureProvider adapter={new FakeAdapter()}>
+        <Harness onReady={(c) => { ctx = c; }} />
+      </ArchitectureProvider>,
+    );
+    await waitFor(() => expect(ctx!.architecture).not.toBeNull());
+    return () => ctx!;
+  }
+
+  it('takes the function off any system that referenced it', async () => {
+    const get = await setUp();
+
+    let fnId = '';
+    await act(async () => { fnId = get().addFunction({ name: 'Finance', type: 'finance', isActive: true }); });
+    await act(async () => {
+      get().addSystem({
+        name: 'Xero', type: 'finance', hosting: 'cloud', status: 'active',
+        functionIds: [fnId], serviceIds: [],
+      });
+    });
+    expect(get().architecture!.systems[0].functionIds).toEqual([fnId]);
+
+    await act(async () => { get().removeFunction(fnId); });
+
+    expect(get().architecture!.systems[0].functionIds).toEqual([]);
+  });
+
+  it('leaves other functions on that system alone', async () => {
+    const get = await setUp();
+
+    let keep = '';
+    let drop = '';
+    await act(async () => {
+      keep = get().addFunction({ name: 'Finance', type: 'finance', isActive: true });
+      drop = get().addFunction({ name: 'Operations', type: 'operations', isActive: true });
+    });
+    await act(async () => {
+      get().addSystem({
+        name: 'Xero', type: 'finance', hosting: 'cloud', status: 'active',
+        functionIds: [keep, drop], serviceIds: [],
+      });
+    });
+
+    await act(async () => { get().removeFunction(drop); });
+
+    expect(get().architecture!.systems[0].functionIds).toEqual([keep]);
+  });
+
+  it('does the same when a service is removed', async () => {
+    const get = await setUp();
+
+    let svcId = '';
+    await act(async () => {
+      svcId = get().addService({ name: 'Advice line', status: 'active', functionIds: [], systemIds: [] });
+    });
+    await act(async () => {
+      get().addSystem({
+        name: 'Lamplight', type: 'case_management', hosting: 'cloud', status: 'active',
+        functionIds: [], serviceIds: [svcId],
+      });
+    });
+
+    await act(async () => { get().removeService(svcId); });
+
+    expect(get().architecture!.systems[0].serviceIds).toEqual([]);
+  });
+});
+

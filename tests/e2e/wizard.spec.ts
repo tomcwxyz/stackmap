@@ -348,6 +348,28 @@ test.describe('importing spend', () => {
     await expect(page.getByTestId('spend-summary')).toBeVisible();
   });
 
+  test('keeps imported tools grouped after revisiting the functions step', async ({ page }) => {
+    // The functions step used to delete every function and recreate it with a
+    // fresh id, so everything filed under one was silently detached and the
+    // whole map landed in "Other systems".
+    await fillOrganisation(page, 'Sunrise Trust');
+
+    await page.getByRole('button', { name: /^import$/i }).first().click();
+    await page.getByText(/accounting or bank export/i).click();
+    await page.locator('input[type="file"]').setInputFiles(STATEMENT);
+    await expect(page.getByTestId('spend-summary')).toBeVisible();
+    await page.getByRole('button', { name: /^add \d+ systems?$/i }).click();
+
+    // Walk back through the step that names the functions, changing nothing
+    await page.goto('/wizard/functions');
+    await page.getByRole('button', { name: /^continue$/i }).click();
+    await page.waitForURL('**/wizard/functions/systems');
+
+    // The tools are still filed where the import put them
+    await page.goto('/wizard/functions/review');
+    await expect(page.getByRole('heading', { name: /other systems/i })).toHaveCount(0);
+  });
+
   test('files imported tools under a function instead of orphaning them', async ({ page }) => {
     await fillOrganisation(page, 'Sunrise Trust');
 

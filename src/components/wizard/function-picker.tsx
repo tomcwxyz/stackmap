@@ -87,15 +87,31 @@ export function FunctionPicker() {
   }, []);
 
   const handleContinue = useCallback(() => {
-    // Clear existing functions to avoid duplicates on re-visit
+    // Reconcile rather than clear and re-add. Systems point at functions by
+    // id, so recreating a function the user never touched hands it a new id
+    // and quietly detaches everything filed under it — the whole map lands in
+    // "Other systems" for having revisited this step.
     const existingFunctions = architecture?.functions ?? [];
+
+    const keptStandard = new Set<string>();
     for (const fn of existingFunctions) {
-      removeFunction(fn.id);
+      if (fn.type !== 'custom' && selectedTypes.has(fn.type)) keptStandard.add(fn.type);
     }
 
-    // Add selected standard functions to architecture
+    const keptCustomIds = new Set(
+      customFunctions.map((cf) => cf.id).filter((id): id is string => Boolean(id)),
+    );
+
+    // Anything deselected since last time
+    for (const fn of existingFunctions) {
+      const stillWanted =
+        fn.type === 'custom' ? keptCustomIds.has(fn.id) : selectedTypes.has(fn.type);
+      if (!stillWanted) removeFunction(fn.id);
+    }
+
+    // Standard functions chosen for the first time
     for (const def of STANDARD_FUNCTIONS) {
-      if (selectedTypes.has(def.type)) {
+      if (selectedTypes.has(def.type) && !keptStandard.has(def.type)) {
         addFunction({
           name: def.name,
           type: def.type,
@@ -105,8 +121,9 @@ export function FunctionPicker() {
       }
     }
 
-    // Add custom functions
+    // Custom ones without an id have not been saved yet
     for (const cf of customFunctions) {
+      if (cf.id) continue;
       addFunction({
         name: cf.name,
         type: 'custom',
