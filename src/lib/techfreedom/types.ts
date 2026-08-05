@@ -44,6 +44,12 @@ export interface KnownTool {
   slug: string;
   name: string;
   provider: string;
+  /**
+   * Other names this tool goes by, chiefly the codes that appear on bank
+   * statements: Google Workspace bills as "GSUITE", Microsoft 365 as "O365".
+   * The descriptor rarely spells out the product name.
+   */
+  aliases?: string[];
   category: string;
   score: TechFreedomScore;
   keyRisks: string;

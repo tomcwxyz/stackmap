@@ -493,9 +493,9 @@ describe('ImportDialog', () => {
       // importer was originally written to look for.
       const starlingCsv = [
         'Date,Counter Party,Reference,Type,Amount (GBP),Balance (GBP)',
-        '02/05/2026,Google Cloud,Google Workspace_good-,CARD SUBSCRIPTION,-26.08,1101.78',
-        '02/06/2026,Google Cloud,Google Workspace_good-,CARD SUBSCRIPTION,-26.08,2025.86',
-        '02/07/2026,Google Cloud,Google Workspace_good-,CARD SUBSCRIPTION,-26.08,5338.98',
+        '02/05/2026,Supabase,SUPABASE_good-,CARD SUBSCRIPTION,-26.08,1101.78',
+        '02/06/2026,Supabase,SUPABASE_good-,CARD SUBSCRIPTION,-26.08,2025.86',
+        '02/07/2026,Supabase,SUPABASE_good-,CARD SUBSCRIPTION,-26.08,5338.98',
       ].join('\n');
 
       const unfamiliarCsv = ['Col1,Col2', 'Xero,33.00', 'Xero,33.00'].join('\n');

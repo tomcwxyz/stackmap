@@ -620,6 +620,17 @@ browser — the file is never uploaded anywhere.
 - Works out how often you pay — monthly, quarterly, yearly — and what that comes to
   over a year
 
+### What it will not guess
+
+A payee that names only a vendor — `AMAZON`, `GOOGLE`, `MICROSOFT` — is left
+unrecognised, because the brand says nothing about which of their products the
+payment was for. It appears in the list below for you to tick and name if it is
+software. Where a vendor sells only one thing Stackmap knows about, such as
+Anthropic, the product is named as usual.
+
+Statement shorthand is understood: `GOOGLE *GSUITE_yourorg` is recognised as
+Google Workspace even though the words "Google Workspace" never appear.
+
 ### What you confirm
 
 Nothing is added until you tick it. Tools Stackmap recognises are ticked for you.

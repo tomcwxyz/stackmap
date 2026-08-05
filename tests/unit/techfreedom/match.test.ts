@@ -99,3 +99,71 @@ describe('findMatchingTool', () => {
     expect(match!.slug).toBe('slack');
   });
 });
+
+describe('findMatchingTool refusing a bad guess', () => {
+  // An imported tool arrives ticked, costed and risk-scored, so a wrong match
+  // is far more expensive than no match: the payee is simply listed for the
+  // user to identify instead.
+
+  describe('a vendor brand on its own', () => {
+    it('does not read "Amazon" as Amazon Web Services', () => {
+      // Roughly £400 a year of shopping used to arrive as a cloud hosting bill
+      expect(findMatchingTool('Amazon', KNOWN_TOOLS)).toBeNull();
+      expect(findMatchingTool('Amazon Marketplace', KNOWN_TOOLS)).toBeNull();
+    });
+
+    it('does not pick one product for a vendor that sells many', () => {
+      expect(findMatchingTool('Google', KNOWN_TOOLS)).toBeNull();
+      expect(findMatchingTool('Microsoft', KNOWN_TOOLS)).toBeNull();
+      expect(findMatchingTool('Meta', KNOWN_TOOLS)).toBeNull();
+    });
+
+    it('still names the product when the vendor sells only one', () => {
+      expect(findMatchingTool('Anthropic', KNOWN_TOOLS)?.name).toBe('Claude');
+      expect(findMatchingTool('Automattic', KNOWN_TOOLS)?.name).toBe('WordPress');
+    });
+
+    it('still matches the vendor when the full product is named', () => {
+      expect(findMatchingTool('Amazon Web Services', KNOWN_TOOLS)?.name).toBe(
+        'Amazon Web Services',
+      );
+      expect(findMatchingTool('AWS', KNOWN_TOOLS)?.name).toBe('Amazon Web Services');
+    });
+  });
+
+  describe('a name that merely contains a tool name', () => {
+    it('does not read "Xerox" as Xero', () => {
+      expect(findMatchingTool('Xerox', KNOWN_TOOLS)).toBeNull();
+      expect(findMatchingTool('Xerox Ltd', KNOWN_TOOLS)).toBeNull();
+    });
+
+    it('does not match on a fragment of a longer word', () => {
+      expect(findMatchingTool('Slackline Adventures', KNOWN_TOOLS)).toBeNull();
+      expect(findMatchingTool('Canvas Credit Union', KNOWN_TOOLS)).toBeNull();
+      expect(findMatchingTool('Zoominfo', KNOWN_TOOLS)).toBeNull();
+      expect(findMatchingTool('Boxpark', KNOWN_TOOLS)).toBeNull();
+      expect(findMatchingTool('Stripey Co', KNOWN_TOOLS)).toBeNull();
+    });
+
+    it('still matches a tool named as a whole word in a longer text', () => {
+      expect(findMatchingTool('we use Slack for comms', KNOWN_TOOLS)?.slug).toBe('slack');
+    });
+  });
+
+  describe('statement shorthand', () => {
+    it('reads the code a vendor bills under', () => {
+      // Google Workspace has never appeared on a statement as "Google Workspace"
+      expect(findMatchingTool('GOOGLE *GSUITE_sunrise', KNOWN_TOOLS)?.name).toBe(
+        'Google Workspace',
+      );
+      expect(findMatchingTool('OFFICE 365', KNOWN_TOOLS)?.name).toBe('Microsoft 365');
+    });
+  });
+
+  describe('part of a product name', () => {
+    it('still resolves a distinctive product word', () => {
+      expect(findMatchingTool('Teams', KNOWN_TOOLS)?.name).toBe('Microsoft Teams');
+      expect(findMatchingTool('Sheets', KNOWN_TOOLS)?.name).toBe('Google Sheets');
+    });
+  });
+});

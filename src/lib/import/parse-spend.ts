@@ -485,7 +485,13 @@ export function parseSpendCsv(text: string, mapping?: SpendColumnMapping): Spend
     const match: SpendMatch = {
       payee,
       originalPayee: group.originalPayee,
-      tool: findMatchingTool(payee, KNOWN_TOOLS) ?? undefined,
+      // Cleaning is for display and grouping; matching gets the raw descriptor
+      // too, because that is where the product hides. "GOOGLE *GSUITE_sunrise"
+      // cleans to "GOOGLE", which names a vendor and not a product.
+      tool:
+        findMatchingTool(payee, KNOWN_TOOLS) ??
+        findMatchingTool(group.originalPayee, KNOWN_TOOLS) ??
+        undefined,
       transactions: group.amounts.length,
       totalAmount: Math.round(group.amounts.reduce((sum, a) => sum + a, 0) * 100) / 100,
       firstDate: sortedDates[0]?.toISOString().slice(0, 10),

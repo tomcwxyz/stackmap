@@ -6,6 +6,7 @@ export const KNOWN_TOOLS: KnownTool[] = [
     slug: 'microsoft-365',
     name: 'Microsoft 365',
     provider: 'Microsoft',
+    aliases: ['office 365', 'o365', 'msft 365'],
     category: 'Productivity',
     score: {
       jurisdiction: 4,
@@ -33,6 +34,7 @@ export const KNOWN_TOOLS: KnownTool[] = [
     slug: 'google-workspace',
     name: 'Google Workspace',
     provider: 'Google',
+    aliases: ['gsuite', 'g suite', 'google apps'],
     category: 'Productivity',
     score: {
       jurisdiction: 4,
@@ -593,6 +595,7 @@ export const KNOWN_TOOLS: KnownTool[] = [
     slug: 'chatgpt',
     name: 'ChatGPT',
     provider: 'OpenAI',
+    aliases: ['openai'],
     category: 'AI',
     score: {
       jurisdiction: 4,
