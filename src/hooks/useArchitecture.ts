@@ -20,6 +20,8 @@ import type {
   DataCategory,
   Integration,
   Owner,
+  ExternalParty,
+  DataFlow,
   MappingPath,
 } from '@/lib/types';
 import type { LoadReport, StorageAdapter } from '@/lib/storage/adapter';
@@ -71,6 +73,7 @@ export interface ArchitectureContextValue {
 
   // Data categories
   addDataCategory: (dc: Omit<DataCategory, 'id'>) => string;
+  updateDataCategory: (id: string, updates: Partial<Omit<DataCategory, 'id'>>) => void;
   removeDataCategory: (id: string) => void;
 
   // Integrations
@@ -80,6 +83,16 @@ export interface ArchitectureContextValue {
   // Owners
   addOwner: (owner: Omit<Owner, 'id'>) => string;
   removeOwner: (id: string) => void;
+
+  // External parties
+  addExternalParty: (party: Omit<ExternalParty, 'id'>) => string;
+  updateExternalParty: (id: string, updates: Partial<Omit<ExternalParty, 'id'>>) => void;
+  removeExternalParty: (id: string) => void;
+
+  // Data flows
+  addDataFlow: (flow: Omit<DataFlow, 'id'>) => string;
+  updateDataFlow: (id: string, updates: Partial<Omit<DataFlow, 'id'>>) => void;
+  removeDataFlow: (id: string) => void;
 
   // Bulk replace
   replaceArchitecture: (arch: Architecture) => void;
@@ -113,6 +126,8 @@ function createBlankArchitecture(mappingPath: MappingPath = 'function_first'): A
     dataCategories: [],
     integrations: [],
     owners: [],
+    externalParties: [],
+    dataFlows: [],
     metadata: {
       version: SCHEMA_VERSION,
       exportedAt: now,
@@ -376,6 +391,18 @@ export function ArchitectureProvider({
     [updateArch],
   );
 
+  const updateDataCategory = useCallback(
+    (id: string, updates: Partial<Omit<DataCategory, 'id'>>) => {
+      updateArch((prev) => ({
+        ...prev,
+        dataCategories: prev.dataCategories.map((dc) =>
+          dc.id === id ? { ...dc, ...updates } : dc,
+        ),
+      }));
+    },
+    [updateArch],
+  );
+
   const removeDataCategory = useCallback(
     (id: string) => {
       updateArch((prev) => ({
@@ -434,6 +461,78 @@ export function ArchitectureProvider({
     [updateArch],
   );
 
+  // ─── External parties ───
+
+  const addExternalParty = useCallback(
+    (party: Omit<ExternalParty, 'id'>): string => {
+      const id = uuidv4();
+      updateArch((prev) => ({
+        ...prev,
+        externalParties: [...prev.externalParties, { ...party, id }],
+      }));
+      return id;
+    },
+    [updateArch],
+  );
+
+  const updateExternalParty = useCallback(
+    (id: string, updates: Partial<Omit<ExternalParty, 'id'>>) => {
+      updateArch((prev) => ({
+        ...prev,
+        externalParties: prev.externalParties.map((p) =>
+          p.id === id ? { ...p, ...updates } : p,
+        ),
+      }));
+    },
+    [updateArch],
+  );
+
+  const removeExternalParty = useCallback(
+    (id: string) => {
+      updateArch((prev) => ({
+        ...prev,
+        externalParties: prev.externalParties.filter((p) => p.id !== id),
+        // A flow to a party that no longer exists is meaningless
+        dataFlows: prev.dataFlows.filter((f) => f.partyId !== id),
+      }));
+    },
+    [updateArch],
+  );
+
+  // ─── Data flows ───
+
+  const addDataFlow = useCallback(
+    (flow: Omit<DataFlow, 'id'>): string => {
+      const id = uuidv4();
+      updateArch((prev) => ({
+        ...prev,
+        dataFlows: [...prev.dataFlows, { ...flow, id }],
+      }));
+      return id;
+    },
+    [updateArch],
+  );
+
+  const updateDataFlow = useCallback(
+    (id: string, updates: Partial<Omit<DataFlow, 'id'>>) => {
+      updateArch((prev) => ({
+        ...prev,
+        dataFlows: prev.dataFlows.map((f) => (f.id === id ? { ...f, ...updates } : f)),
+      }));
+    },
+    [updateArch],
+  );
+
+  const removeDataFlow = useCallback(
+    (id: string) => {
+      updateArch((prev) => ({
+        ...prev,
+        dataFlows: prev.dataFlows.filter((f) => f.id !== id),
+      }));
+    },
+    [updateArch],
+  );
+
   // ─── Bulk replace ───
 
   const replaceArchitecture = useCallback((arch: Architecture) => {
@@ -487,11 +586,18 @@ export function ArchitectureProvider({
     updateSystem,
     removeSystem,
     addDataCategory,
+    updateDataCategory,
     removeDataCategory,
     addIntegration,
     removeIntegration,
     addOwner,
     removeOwner,
+    addExternalParty,
+    updateExternalParty,
+    removeExternalParty,
+    addDataFlow,
+    updateDataFlow,
+    removeDataFlow,
     replaceArchitecture,
     setTechFreedomEnabled,
     save,

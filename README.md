@@ -3,7 +3,7 @@
 **Lightweight architecture mapping for social purpose organisations.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-720%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-1055%20passing-brightgreen.svg)]()
 [![WCAG 2.1 AA](https://img.shields.io/badge/accessibility-WCAG%202.1%20AA-blue.svg)]()
 
 ---
@@ -20,13 +20,18 @@ Stackmap is an open source tool that solves this problem. It provides a guided w
 
 - **Two wizard paths** — function-first ("what does your org do?") or service-first ("what do you deliver?"), both leading to the same architecture map
 - **8 standard functions** with descriptions and typical systems (Finance, Governance, People, Fundraising, Communications, Service Delivery, Operations, Data & Reporting)
+- **Sector function sets** for councils (revenues and benefits, planning, social care, waste, housing and more) and for businesses
 - **14 service templates** with auto-populated tool suggestions (Advice sessions, Grant distribution, Youth programmes, and more)
 - **System suggestions** tailored by organisation type and size
 - **TechFreedom risk assessment** (optional) — scores systems across 5 dimensions: jurisdiction, continuity, surveillance, lock-in, and cost exposure
 - **134 pre-scored known tools** with detailed pricing data for automatic cost estimation
 - **Smart cost estimation** with per-seat pricing, tier selection, and penetration rates
+- **Spend discovery** — import an accounting or bank export and find the tools you pay for, with what they actually cost
 - **Systems inventory** — search, filter, sort, edit and delete every system in one place after the wizard
 - **Board report** — a printable one-page summary for trustees and funders
+- **Several maps and snapshots** — keep a map per organisation, copy one to try a change, and restore a labelled snapshot when the change was wrong
+- **External sharing** — record the funders, regulators, auditors and partners your data goes to, what goes to each and why, and whether it leaves the UK
+- **Draft data protection record** — a starting point for the UK GDPR Article 30 register, built from the map and exportable as a spreadsheet
 - **Live architecture map sidebar** showing your map as you build it
 - **Mermaid diagram generation** for visual architecture maps
 - **Cost analysis** with estimates for uncosted systems, and duplication detection across the whole map
@@ -72,13 +77,14 @@ Then open [http://localhost:3000](http://localhost:3000) in your browser.
 src/
 ├── app/                    # Next.js App Router pages and layouts
 │   ├── wizard/             # Wizard flow (function-first and service-first paths)
-│   └── view/               # Systems inventory, diagram, board report, risk views
+│   ├── view/               # Systems inventory, diagram, board report, data protection record
+│   └── maps/               # Several maps in one browser, and snapshots of each
 ├── components/
 │   ├── ui/                 # Base UI components (Button, Card, Input, Select, etc.)
 │   ├── wizard/             # Wizard-specific components (steps, forms, sidebar)
 │   ├── techfreedom/        # Risk badge, radar chart, risk details
 │   ├── import/             # Import dialog and CSV preview
-│   ├── views/              # Systems table, diagram, board report, risk views
+│   ├── views/              # Systems table, diagram, board report, ROPA, maps
 │   └── layout/             # Header, footer, storage notice
 ├── lib/
 │   ├── types.ts            # Core TypeScript type definitions
@@ -87,15 +93,16 @@ src/
 │   ├── functions.ts        # Standard functions data and helpers
 │   ├── function-templates.ts  # System suggestions per function/org type/size
 │   ├── service-templates.ts   # Service templates with suggested tools
+│   ├── sector-functions.ts    # Council and business function sets
 │   ├── cost-estimates.ts      # Cost estimation with tiered pricing
-│   ├── storage/            # Storage adapter, migration, localStorage backend
+│   ├── storage/            # Storage adapter, migration, workspace, localStorage backend
 │   ├── import/             # CSV and JSON import
 │   ├── export/             # Markdown and CSV export
 │   ├── analysis/           # Risk against importance, duplication, renewals
-│   ├── report/             # Board report analysis
+│   ├── report/             # Board report and Article 30 record
 │   ├── diagram/            # Mermaid diagram generation
 │   └── techfreedom/        # Risk scoring, known tools database, API
-├── hooks/                  # React hooks (useArchitecture, useStorageStatus, useAppConfig)
+├── hooks/                  # React hooks (useArchitecture, useWorkspace, useStorageStatus, useAppConfig)
 └── styles/                 # Global CSS with design tokens
 
 tests/
@@ -122,7 +129,7 @@ npm run typecheck     # TypeScript type checking
 
 ### Testing
 
-Stackmap follows a strict TDD workflow (red, green, refactor). The test suite currently includes **720 tests across 63 test files**.
+Stackmap follows a strict TDD workflow (red, green, refactor). The test suite currently includes **1055 tests across 82 test files**.
 
 Every component test includes an accessibility check using jest-axe:
 

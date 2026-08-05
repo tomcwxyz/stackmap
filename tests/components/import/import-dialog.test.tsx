@@ -59,6 +59,8 @@ function makeValidArchitecture(): Architecture {
     dataCategories: [],
     integrations: [],
     owners: [{ id: 'o1', name: 'Jane', isExternal: false }],
+    externalParties: [],
+    dataFlows: [],
     metadata: {
       version: '1',
       exportedAt: '2024-01-01T00:00:00Z',
@@ -257,12 +259,21 @@ describe('ImportDialog', () => {
   });
 
   describe('merge mode', () => {
-    it('skips format step and goes straight to CSV file input in merge mode', () => {
-      render(<ImportDialog open mode="merge" onClose={vi.fn()} onImport={vi.fn()} />);
-      // Should NOT show format picker
+    it('offers only the formats that add to an existing map', () => {
+      render(
+        <ImportDialog
+          open
+          mode="merge"
+          onClose={vi.fn()}
+          onImport={vi.fn()}
+          onImportSpend={vi.fn()}
+        />,
+      );
+
+      // Replacing everything from a JSON export is not on offer mid-map
       expect(screen.queryByText(/full architecture/i)).not.toBeInTheDocument();
-      // Should show CSV file input directly
-      expect(screen.getByText(/select a .csv file/i)).toBeInTheDocument();
+      expect(screen.getByText(/systems list/i)).toBeInTheDocument();
+      expect(screen.getByText(/accounting or bank export/i)).toBeInTheDocument();
     });
 
     it('shows "Add N systems" button text in merge mode', async () => {
@@ -271,6 +282,7 @@ describe('ImportDialog', () => {
       const onMergeCsv = vi.fn();
       render(<ImportDialog open mode="merge" onClose={vi.fn()} onImport={vi.fn()} onMergeCsv={onMergeCsv} />);
       const user = userEvent.setup();
+      await user.click(screen.getByText(/systems list/i));
       const input = document.querySelector('input[type="file"]') as HTMLInputElement;
       await user.upload(input, file);
       const addBtn = await screen.findByRole('button', { name: /add 2 systems/i });
@@ -291,6 +303,7 @@ describe('ImportDialog', () => {
         />,
       );
       const user = userEvent.setup();
+      await user.click(screen.getByText(/systems list/i));
       const input = document.querySelector('input[type="file"]') as HTMLInputElement;
       await user.upload(input, file);
 
@@ -315,6 +328,7 @@ describe('ImportDialog', () => {
         />,
       );
       const user = userEvent.setup();
+      await user.click(screen.getByText(/systems list/i));
       const input = document.querySelector('input[type="file"]') as HTMLInputElement;
       await user.upload(input, file);
 
@@ -330,6 +344,7 @@ describe('ImportDialog', () => {
       const onImport = vi.fn();
       render(<ImportDialog open mode="merge" onClose={vi.fn()} onImport={onImport} onMergeCsv={onMergeCsv} />);
       const user = userEvent.setup();
+      await user.click(screen.getByText(/systems list/i));
       const input = document.querySelector('input[type="file"]') as HTMLInputElement;
       await user.upload(input, file);
       const addBtn = await screen.findByRole('button', { name: /add 1 system/i });
@@ -338,17 +353,24 @@ describe('ImportDialog', () => {
       expect(onImport).not.toHaveBeenCalled();
     });
 
-    it('resets to file step (not format) when merge dialog is closed and reopened', async () => {
-      const { rerender } = render(
-        <ImportDialog open mode="merge" onClose={vi.fn()} onImport={vi.fn()} />,
-      );
-      // Close dialog
-      rerender(<ImportDialog open={false} mode="merge" onClose={vi.fn()} onImport={vi.fn()} />);
-      // Reopen dialog
-      rerender(<ImportDialog open mode="merge" onClose={vi.fn()} onImport={vi.fn()} />);
-      // Should show CSV file input, not format picker
-      expect(screen.queryByText(/full architecture/i)).not.toBeInTheDocument();
+    it('starts over when the dialog is closed and reopened', async () => {
+      const user = userEvent.setup();
+      const props = {
+        mode: 'merge' as const,
+        onClose: vi.fn(),
+        onImport: vi.fn(),
+        onImportSpend: vi.fn(),
+      };
+      const { rerender } = render(<ImportDialog open {...props} />);
+      await user.click(screen.getByText(/systems list/i));
       expect(screen.getByText(/select a .csv file/i)).toBeInTheDocument();
+
+      rerender(<ImportDialog open={false} {...props} />);
+      rerender(<ImportDialog open {...props} />);
+
+      // Back at the start, with nothing carried over from last time
+      expect(screen.getByText(/accounting or bank export/i)).toBeInTheDocument();
+      expect(screen.queryByText(/select a .csv file/i)).not.toBeInTheDocument();
     });
   });
 
@@ -367,5 +389,111 @@ describe('ImportDialog', () => {
 
     // Should be back on format picker
     expect(screen.getByText(/full architecture/i)).toBeInTheDocument();
+  });
+
+  describe('spend import', () => {
+    const spendCsv = [
+      'Date,Payee,Amount',
+      '05/01/2026,XERO LIMITED,33.00',
+      '05/02/2026,XERO LIMITED,33.00',
+      '05/03/2026,XERO LIMITED,33.00',
+      '10/01/2026,BOB THE PLUMBER,150.00',
+    ].join('\n');
+
+    async function uploadSpend(onImportSpend = vi.fn()) {
+      const user = userEvent.setup();
+      render(
+        <ImportDialog
+          open
+          mode="merge"
+          onClose={vi.fn()}
+          onImport={vi.fn()}
+          onImportSpend={onImportSpend}
+        />,
+      );
+      await user.click(screen.getByText(/accounting or bank export/i));
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+      await user.upload(input, createFile(spendCsv, 'spend.csv', 'text/csv'));
+      return { user, onImportSpend };
+    }
+
+    it('reassures the user the file stays in their browser', async () => {
+      const user = userEvent.setup();
+      render(<ImportDialog open onClose={vi.fn()} onImport={vi.fn()} onImportSpend={vi.fn()} />);
+      await user.click(screen.getByText(/accounting or bank export/i));
+
+      expect(screen.getByText(/never uploaded/i)).toBeInTheDocument();
+    });
+
+    it('is not offered where nothing would receive it', () => {
+      // Spend adds systems rather than replacing the map, so it needs its own
+      // handler. Offered without one, choosing it led to a dead end: the
+      // preview accepted a selection and then did nothing.
+      render(<ImportDialog open onClose={vi.fn()} onImport={vi.fn()} />);
+
+      expect(screen.queryByText(/accounting or bank export/i)).not.toBeInTheDocument();
+      expect(screen.getByText(/systems list/i)).toBeInTheDocument();
+    });
+
+    it('shows what it recognised', async () => {
+      await uploadSpend();
+
+      expect(await screen.findByTestId('spend-summary')).toHaveTextContent(
+        /1 payee that looks like a tool/i,
+      );
+      expect(screen.getByRole('checkbox', { name: /include xero/i })).toBeChecked();
+    });
+
+    it('does not tick payees it could not recognise', async () => {
+      const { user } = await uploadSpend();
+      await screen.findByTestId('spend-summary');
+
+      await user.click(screen.getByText(/show the 1 it did not recognise/i));
+
+      expect(screen.getByRole('checkbox', { name: /include bob the plumber/i })).not.toBeChecked();
+    });
+
+    it('passes on only the payees that are ticked', async () => {
+      const { user, onImportSpend } = await uploadSpend();
+      await screen.findByTestId('spend-summary');
+
+      await user.click(screen.getByRole('button', { name: /add 1 system/i }));
+
+      expect(onImportSpend).toHaveBeenCalledTimes(1);
+      const chosen = onImportSpend.mock.calls[0][0];
+      expect(chosen).toHaveLength(1);
+      expect(chosen[0].tool.name).toBe('Xero');
+    });
+
+    it('can add a payee it did not recognise once ticked', async () => {
+      const { user, onImportSpend } = await uploadSpend();
+      await screen.findByTestId('spend-summary');
+
+      await user.click(screen.getByText(/show the 1 it did not recognise/i));
+      await user.click(screen.getByRole('checkbox', { name: /include bob the plumber/i }));
+      await user.click(screen.getByRole('button', { name: /add 2 systems/i }));
+
+      expect(onImportSpend.mock.calls[0][0]).toHaveLength(2);
+    });
+
+    it('cannot add nothing', async () => {
+      const { user } = await uploadSpend();
+      await screen.findByTestId('spend-summary');
+
+      await user.click(screen.getByRole('checkbox', { name: /include xero/i }));
+
+      expect(screen.getByRole('button', { name: /add 0 systems/i })).toBeDisabled();
+    });
+
+    it('reports a file it cannot read', async () => {
+      const user = userEvent.setup();
+      render(<ImportDialog open onClose={vi.fn()} onImport={vi.fn()} onImportSpend={vi.fn()} />);
+      await user.click(screen.getByText(/accounting or bank export/i));
+
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+      await user.upload(input, createFile('foo,bar\n1,2\n', 'bad.csv', 'text/csv'));
+
+      expect(await screen.findByText(/payees or descriptions/i)).toBeInTheDocument();
+    });
   });
 });

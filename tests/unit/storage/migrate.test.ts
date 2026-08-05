@@ -27,6 +27,8 @@ function validRaw() {
     dataCategories: [],
     integrations: [],
     owners: [],
+    externalParties: [],
+    dataFlows: [],
     metadata: {
       version: SCHEMA_VERSION,
       exportedAt: '2026-01-01T00:00:00.000Z',

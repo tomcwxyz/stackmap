@@ -44,6 +44,8 @@ function makeValidArchitectureJson(): Record<string, unknown> {
     dataCategories: [],
     integrations: [],
     owners: [],
+    externalParties: [],
+    dataFlows: [],
     metadata: {
       version: '1',
       exportedAt: '2026-01-01T00:00:00Z',

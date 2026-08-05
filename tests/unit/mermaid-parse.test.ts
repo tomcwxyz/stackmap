@@ -81,6 +81,8 @@ function architecture(): Architecture {
       },
     ],
     owners: [{ id: 'own-1', name: "Sarah O'Brien", isExternal: false }],
+    externalParties: [],
+    dataFlows: [],
     metadata: {
       version: '1.0.0',
       exportedAt: '2026-01-01T00:00:00Z',

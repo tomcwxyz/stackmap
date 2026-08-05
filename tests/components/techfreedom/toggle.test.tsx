@@ -24,6 +24,8 @@ vi.mock('@/hooks/useArchitecture', () => ({
       dataCategories: [],
       integrations: [],
       owners: [],
+      externalParties: [],
+      dataFlows: [],
       metadata: {
         version: '1.0.0',
         exportedAt: '',
@@ -59,6 +61,8 @@ beforeEach(() => {
       dataCategories: [],
       integrations: [],
       owners: [],
+      externalParties: [],
+      dataFlows: [],
       metadata: {
         version: '1.0.0',
         exportedAt: '',
@@ -120,6 +124,8 @@ describe('TechFreedomToggle', () => {
         dataCategories: [],
         integrations: [],
         owners: [],
+        externalParties: [],
+        dataFlows: [],
         metadata: {
           version: '1.0.0',
           exportedAt: '',

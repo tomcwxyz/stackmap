@@ -22,6 +22,8 @@ const emptyArch = {
   dataCategories: [],
   integrations: [],
   owners: [],
+  externalParties: [],
+  dataFlows: [],
   metadata: { version: '1', exportedAt: '', stackmapVersion: '0.1.0', mappingPath: 'function_first', techFreedomEnabled: false },
 };
 

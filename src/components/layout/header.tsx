@@ -40,6 +40,12 @@ export function Header() {
             >
               Your systems
             </Link>
+            <Link
+              href="/maps"
+              className="text-sm font-medium text-primary-700 hover:text-primary-900 transition-colors"
+            >
+              Your maps
+            </Link>
             {config.techFreedomAvailable && (
               <Link
                 href="/view/techfreedom"
@@ -102,6 +108,13 @@ export function Header() {
               onClick={() => setMobileOpen(false)}
             >
               Your systems
+            </Link>
+            <Link
+              href="/maps"
+              className="block px-3 py-2 rounded-md text-sm font-medium text-primary-700 hover:bg-surface-100 hover:text-primary-900 transition-colors"
+              onClick={() => setMobileOpen(false)}
+            >
+              Your maps
             </Link>
             <Link
               href="/view/diagram"

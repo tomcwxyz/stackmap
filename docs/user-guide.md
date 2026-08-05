@@ -596,3 +596,185 @@ it as the ceiling rather than a forecast.
 
 Grouping follows the system type you chose. If you want two tools compared, give
 them the same type.
+
+---
+
+## 19. Finding Your Tools From What You Pay For
+
+Remembering every tool the organisation uses is the hardest part of mapping. Your
+bank statement already knows.
+
+Choose **Import**, then **Spend**, and upload a transaction export from your
+accounting software (Xero, QuickBooks) or online banking. Stackmap reads it in your
+browser — the file is never uploaded anywhere.
+
+### What it does
+
+- Finds the payee, amount and date columns, whatever they are called
+- Ignores money coming in, so grants and donations are not mistaken for costs
+- Cleans up payee text: `SP * CANVA I0F2K3` and `GOOGLE *GSUITE_yourorg` become
+  Canva and Google Workspace
+- Groups repeat payments to the same place, even when the reference code differs
+  every month
+- Works out how often you pay — monthly, quarterly, yearly — and what that comes to
+  over a year
+
+### What you confirm
+
+Nothing is added until you tick it. Tools Stackmap recognises are ticked for you.
+Payees it does not recognise are listed separately and left unticked — some will be
+software it has not heard of, most will be rent, salaries and suppliers.
+
+### Costs
+
+Systems added this way carry the cost you actually paid, which is better than any
+estimate. If a system is already on your map, importing spend fills in a cost that
+was missing but never overwrites a figure you typed in yourself.
+
+!!! tip
+    A full year of transactions gives the best results. A shorter export still
+    works, but Stackmap will not guess an annual figure from a fortnight of data —
+    it reports what was actually spent.
+
+---
+
+## 20. Councils and Businesses
+
+The eight standard functions are shaped around charities. If you set your
+organisation type to **Council** or **Private business**, the functions step
+offers a second set underneath, headed "Also common for organisations like yours".
+
+**Councils** are offered Revenues & Benefits, Planning & Building Control, Adult
+Social Care, Children's Services, Waste & Environment, Housing, Customer Services,
+and Elections & Registration — each with the systems councils typically run behind
+them, so the systems step has somewhere to start.
+
+**Businesses** are offered Sales, Customer Support, Product & Delivery, and Legal &
+Compliance.
+
+You can mix these with the standard functions freely, and add your own on top. If
+your organisation type is charity or social enterprise, nothing changes — the
+standard eight already fit.
+
+!!! note
+    Sector functions are stored as custom functions, so exports and diagrams treat
+    them exactly like any function you name yourself.
+
+---
+
+## 21. Who Sees Your Data
+
+The map stops at your own systems, but most of what a small organisation does
+with its data involves somebody else — reporting to a funder, filing with a
+regulator, handing a spreadsheet to an auditor. The data step asks about that
+once you have added at least one data category.
+
+### Adding someone you share with
+
+Give each one a name, say what they are to you (funder, regulator, auditor,
+delivery partner, supplier or other) and say roughly where they are: UK, Europe,
+outside Europe, or "don't know". Location matters because sending personal data
+out of the UK needs its own safeguards, and it is the one thing people forget.
+
+### Recording what goes to them
+
+For each thing you share, record:
+
+| Field | Why it is asked |
+|-------|-----------------|
+| **From which system** | Ties the sharing to something already on your map |
+| **To whom** | One of the parties you added above |
+| **How does it get there** | Their portal, email, a file, an API, post, or someone typing it in |
+| **How often** | Once a year, on a schedule, when asked, or continuously |
+| **Why do they need it** | The first thing a regulator asks |
+| **Which data** | The categories you have already listed |
+
+Removing a party also removes anything recorded as going to them, since sharing
+with somebody who is no longer on the list means nothing.
+
+---
+
+## 22. The Data Protection Record
+
+If any of your data categories is marked as containing personal data, Stackmap
+can draft a **record of processing activities** — the register UK GDPR Article 30
+requires most organisations to keep. Find it at `/view/ropa`, or from the
+"Data protection record" button at the end of the wizard.
+
+### What it fills in for you
+
+Most of Article 30 is already on your map. The record takes:
+
+- **What data you hold** — your personal-data categories
+- **Which systems hold it** — from the systems each category is assigned to
+- **How it is hosted** — cloud, on-premise or hybrid, as a rough note on security
+- **Who it goes to and why** — from the sharing you recorded in the data step
+- **Whether it leaves the UK** — flagged when any recipient is outside the UK
+
+### What it asks you for
+
+Three things the map cannot know, asked here rather than in the wizard so they
+only cost you time if you actually want the record:
+
+- **Who is it about** — people you support, staff, donors, and so on
+- **Lawful basis** — one of the six in Article 6: consent, contract, legal
+  obligation, vital interests, public task, or legitimate interests
+- **How long you keep it** — in plain words, such as "7 years after last contact"
+
+Each entry says what it is still missing rather than guessing, and the header
+counts how many are outstanding.
+
+### Exporting it
+
+**Export as CSV** produces a spreadsheet with Article 30 headings, which is how
+most organisations keep theirs, and what an ICO request will expect.
+
+!!! warning
+    This is a draft, not a finished record. Stackmap fills in what it can from
+    your map; the gaps, the wording and the accuracy are yours. Check every line
+    and have someone accountable sign it off. An Article 30 record is a legal
+    responsibility, not a tool's output.
+
+---
+
+## 23. Several Maps, and Snapshots
+
+Everything Stackmap stores lives in your browser, and until now that meant one
+map. **Your maps** in the header (or `/maps`) lets you keep several, and keep
+snapshots of the one you are working on.
+
+### Why you might want more than one
+
+- **You advise more than one organisation.** Previously you had to clear the map
+  between them. Now each has its own, and switching does not touch the others.
+- **You want to ask "what if".** Copy the map, change the copy, and compare —
+  without putting the map that describes what is actually there at risk.
+
+### Working with maps
+
+| Action | What happens |
+|--------|--------------|
+| **Add** | A blank map under a name you choose. You stay on the map you were on |
+| **Or copy _name_** | A duplicate of the current map, so the original is untouched |
+| **Switch to this** | Makes that map the one everything else reads, then opens your systems |
+| **Rename** | Changes the name only; the map itself is unaffected |
+| **Delete** | Removes the map and its snapshots, after asking. The last map cannot be deleted |
+
+Your first map is the one you already had — nothing is moved or rewritten when
+the list is created, so if you never make a second map, nothing changes for you.
+
+### Snapshots
+
+A snapshot is the map exactly as it is at that moment, saved under a label. Take
+one before a big change and you can put it back if the change was wrong.
+
+- The last **ten** snapshots of each map are kept; older ones are dropped rather
+  than filling up the browser's storage.
+- **Restore** puts a snapshot back over the map — and snapshots what was there
+  first, labelled "Before restoring", so restoring the wrong one costs nothing.
+- Snapshots belong to a map. Deleting a map deletes them with it.
+
+!!! warning
+    Snapshots are stored in the same browser as the map, so they protect against
+    a bad edit — not against a lost laptop or a cleared browser. Export as JSON
+    for anything you cannot afford to lose.

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { STANDARD_FUNCTIONS } from '@/lib/functions';
+import { getSectorFunctions } from '@/lib/sector-functions';
 import { useArchitecture } from '@/hooks/useArchitecture';
 import type { StandardFunctionDefinition } from '@/lib/functions';
 
@@ -32,13 +33,22 @@ export function FunctionPicker() {
     return new Set(existing.filter((f) => f.type !== 'custom').map((f) => f.type));
   });
   // Track custom functions added by the user — hydrate from architecture on re-visit
-  const [customFunctions, setCustomFunctions] = useState<{ name: string; id?: string }[]>(() => {
+  const [customFunctions, setCustomFunctions] = useState<
+    { name: string; id?: string; description?: string }[]
+  >(() => {
     const existing = architecture?.functions ?? [];
-    return existing.filter((f) => f.type === 'custom').map((f) => ({ name: f.name, id: f.id }));
+    return existing
+      .filter((f) => f.type === 'custom')
+      .map((f) => ({ name: f.name, id: f.id, description: f.description }));
   });
   // Custom function input state
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customName, setCustomName] = useState('');
+
+  // Functions that only make sense for this kind of organisation
+  const orgType = architecture?.organisation.type ?? 'charity';
+  const sectorFunctions = useMemo(() => getSectorFunctions(orgType), [orgType]);
+  const selectedCustomNames = new Set(customFunctions.map((cf) => cf.name.toLowerCase()));
 
   const hasSelection = selectedTypes.size > 0 || customFunctions.length > 0;
 
@@ -66,6 +76,16 @@ export function FunctionPicker() {
     setCustomFunctions((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
+  const toggleSectorFunction = useCallback((name: string, description: string) => {
+    setCustomFunctions((prev) => {
+      const exists = prev.some((cf) => cf.name.toLowerCase() === name.toLowerCase());
+      if (exists) {
+        return prev.filter((cf) => cf.name.toLowerCase() !== name.toLowerCase());
+      }
+      return [...prev, { name, description }];
+    });
+  }, []);
+
   const handleContinue = useCallback(() => {
     // Clear existing functions to avoid duplicates on re-visit
     const existingFunctions = architecture?.functions ?? [];
@@ -90,7 +110,7 @@ export function FunctionPicker() {
       addFunction({
         name: cf.name,
         type: 'custom',
-        description: '',
+        description: cf.description ?? '',
         isActive: true,
       });
     }
@@ -161,6 +181,49 @@ export function FunctionPicker() {
           })}
         </div>
       </fieldset>
+
+      {/* Functions specific to this kind of organisation */}
+      {sectorFunctions.length > 0 && (
+        <fieldset data-testid="sector-functions">
+          <legend className="text-sm font-semibold text-primary-800 uppercase tracking-wide mb-2">
+            Also common for organisations like yours
+          </legend>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {sectorFunctions.map((fn) => {
+              const isChecked = selectedCustomNames.has(fn.name.toLowerCase());
+              return (
+                <label
+                  key={fn.name}
+                  className={`
+                    flex items-start gap-3 rounded-lg border-2 p-4 cursor-pointer
+                    transition-all duration-150
+                    ${isChecked
+                      ? 'border-accent-500 bg-accent-50'
+                      : 'border-surface-300 bg-surface-50 hover:border-primary-300'
+                    }
+                  `}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => toggleSectorFunction(fn.name, fn.description)}
+                    className="mt-0.5 h-5 w-5 rounded border-surface-300 text-primary-600 focus:ring-primary-500 focus:ring-2 focus:ring-offset-0 cursor-pointer"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <span className="block text-base font-semibold text-primary-900">{fn.name}</span>
+                    <span className="block text-sm text-primary-600 mt-0.5 leading-snug">
+                      {fn.description}
+                    </span>
+                    <span className="block text-xs text-primary-400 mt-1.5">
+                      e.g. {fn.suggestedSystems.slice(0, 3).map((s) => s.name).join(', ')}
+                    </span>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
+      )}
 
       {/* Custom functions */}
       {customFunctions.length > 0 && (

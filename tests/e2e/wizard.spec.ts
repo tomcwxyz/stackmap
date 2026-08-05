@@ -204,3 +204,56 @@ test.describe('starting fresh', () => {
     await expect(page.getByRole('heading', { name: /no systems yet/i })).toBeVisible();
   });
 });
+
+test.describe('several maps', () => {
+  test('keeps two organisations apart', async ({ page }) => {
+    await startWizard(page, 'Sunrise Trust');
+    await skipRiskAssessment(page);
+    await pickFunctions(page, ['Finance']);
+    await addSystem(page, 'Xero');
+
+    // A second map, switched to from the maps page
+    await page.goto('/maps');
+    await expect(page.getByText('Sunrise Trust', { exact: true })).toBeVisible();
+    await page.getByLabel(/what is it called/i).fill('Riverside Trust');
+    await page.getByRole('button', { name: /^add$/i }).click();
+    await page.getByRole('button', { name: /switch to this/i }).click();
+
+    // The new map is genuinely blank, not the first one under another name
+    await page.waitForURL('**/view/systems');
+    await expect(page.getByRole('heading', { name: /no systems yet/i })).toBeVisible();
+
+    // And the first map is untouched when we go back to it
+    await page.goto('/maps');
+    await page
+      .getByRole('listitem')
+      .filter({ hasText: 'Sunrise Trust' })
+      .getByRole('button', { name: /switch to this/i })
+      .click();
+    await page.waitForURL('**/view/systems');
+    await expect(page.getByRole('cell', { name: 'Xero', exact: true })).toBeVisible();
+  });
+
+  test('puts a snapshot back over the map it was taken from', async ({ page }) => {
+    await startWizard(page, 'Sunrise Trust');
+    await skipRiskAssessment(page);
+    await pickFunctions(page, ['Finance']);
+    await addSystem(page, 'Xero');
+
+    await page.goto('/maps');
+    await page.getByLabel(/save a snapshot/i).fill('Before adding Slack');
+    await page.getByRole('button', { name: /^save$/i }).click();
+    await expect(page.getByText('Before adding Slack')).toBeVisible();
+
+    // Change the map, then undo the change by restoring
+    await page.goto('/wizard/functions/systems');
+    await addSystem(page, 'Slack');
+
+    await page.goto('/maps');
+    await page.getByRole('button', { name: /^restore$/i }).first().click();
+
+    await page.goto('/view/systems');
+    await expect(page.getByRole('cell', { name: 'Xero', exact: true })).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'Slack', exact: true })).toHaveCount(0);
+  });
+});

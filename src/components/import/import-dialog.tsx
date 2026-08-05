@@ -3,12 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { validateArchitectureJson, parseCsvSystems, csvRowsToArchitecture } from '@/lib/import';
 import { previewCsvMerge } from '@/lib/import/csv-to-architecture';
+import { parseSpendCsv } from '@/lib/import/parse-spend';
 import { CsvPreviewTable } from './csv-preview-table';
+import { SpendPreviewTable } from './spend-preview-table';
 import type { Architecture } from '@/lib/types';
-import type { CsvSystemRow } from '@/lib/import';
+import type { CsvSystemRow, SpendMatch } from '@/lib/import';
 
 type ImportStep = 'format' | 'file' | 'preview' | 'error';
-type ImportFormat = 'json' | 'csv';
+type ImportFormat = 'json' | 'csv' | 'spend';
 
 export interface ImportDialogProps {
   open: boolean;
@@ -16,6 +18,8 @@ export interface ImportDialogProps {
   onClose: () => void;
   onImport: (arch: Architecture) => void;
   onMergeCsv?: (rows: CsvSystemRow[]) => void;
+  /** Called with the spend rows the user confirmed. */
+  onImportSpend?: (matches: SpendMatch[]) => void;
   /** The map being merged into, used to preview what a merge would change. */
   existingArchitecture?: Architecture | null;
 }
@@ -36,14 +40,18 @@ function ImportDialogContent({
   onClose,
   onImport,
   onMergeCsv,
+  onImportSpend,
   existingArchitecture,
 }: Omit<ImportDialogProps, 'open'>) {
   const isMerge = mode === 'merge';
-  const [step, setStep] = useState<ImportStep>(isMerge ? 'file' : 'format');
+  const [step, setStep] = useState<ImportStep>('format');
   const [format, setFormat] = useState<ImportFormat>(isMerge ? 'csv' : 'json');
   const [validatedArch, setValidatedArch] = useState<Architecture | null>(null);
   const [csvRows, setCsvRows] = useState<CsvSystemRow[]>([]);
   const [csvWarnings, setCsvWarnings] = useState<string[]>([]);
+  const [spendMatches, setSpendMatches] = useState<SpendMatch[]>([]);
+  const [spendUnmatched, setSpendUnmatched] = useState<SpendMatch[]>([]);
+  const [spendSelected, setSpendSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState<ErrorState | null>(null);
 
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -104,6 +112,22 @@ function ImportDialogContent({
       if (!file) return;
 
       const text = await file.text();
+
+      if (format === 'spend') {
+        const result = parseSpendCsv(text);
+        if (result.success) {
+          setSpendMatches(result.matches);
+          setSpendUnmatched(result.unmatched);
+          // Recognised tools start ticked; guesses the user must opt into
+          setSpendSelected(new Set(result.matches.map((m) => m.originalPayee)));
+          setCsvWarnings(result.warnings);
+          setStep('preview');
+        } else {
+          setError({ message: result.error });
+          setStep('error');
+        }
+        return;
+      }
 
       if (format === 'json') {
         const result = validateArchitectureJson(text);
@@ -190,6 +214,11 @@ function ImportDialogContent({
 
           {step === 'format' && (
             <FormatStep
+              mode={mode}
+              // Spend adds systems to the map rather than replacing it, so it
+              // needs its own handler. Offering it without one is a dead end:
+              // the preview would accept a choice and then do nothing.
+              offerSpend={Boolean(onImportSpend)}
               onSelect={handleFormatSelect}
               firstRef={firstFocusableRef}
             />
@@ -237,6 +266,31 @@ function ImportDialogContent({
             />
           )}
 
+          {step === 'preview' && format === 'spend' && (
+            <SpendPreviewStep
+              matches={spendMatches}
+              unmatched={spendUnmatched}
+              warnings={csvWarnings}
+              selected={spendSelected}
+              onToggle={(payee) =>
+                setSpendSelected((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(payee)) next.delete(payee);
+                  else next.add(payee);
+                  return next;
+                })
+              }
+              onImport={() => {
+                const chosen = [...spendMatches, ...spendUnmatched].filter((m) =>
+                  spendSelected.has(m.originalPayee),
+                );
+                onImportSpend?.(chosen);
+              }}
+              onCancel={onClose}
+              firstRef={firstFocusableRef}
+            />
+          )}
+
           {step === 'error' && error && (
             <ErrorStep
               error={error}
@@ -261,31 +315,40 @@ export function ImportDialog({ open, ...rest }: ImportDialogProps) {
 // ─── Sub-steps ───
 
 interface FormatStepProps {
+  mode: 'replace' | 'merge';
+  offerSpend: boolean;
   onSelect: (fmt: ImportFormat) => void;
   firstRef: React.RefObject<HTMLButtonElement | null>;
 }
 
-function FormatStep({ onSelect, firstRef }: FormatStepProps) {
+function FormatStep({ mode, offerSpend, onSelect, firstRef }: FormatStepProps) {
+  // Replacing the whole map from a JSON export only makes sense when starting
+  // out; part-way through, everything on offer adds to what is already there.
+  const offerJson = mode === 'replace';
+
   return (
     <div className="grid grid-cols-2 gap-4">
-      <button
-        ref={firstRef}
-        type="button"
-        onClick={() => onSelect('json')}
-        className="rounded-lg border border-surface-300 p-4 text-left transition-colors hover:border-primary-400 hover:bg-primary-50 focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
-      >
-        <span className="block font-display font-semibold text-primary-900">
-          JSON
-        </span>
-        <span className="block text-sm text-primary-700">
-          Full architecture
-        </span>
-        <span className="mt-1 block text-xs text-primary-500">
-          Import a previously exported Stackmap file
-        </span>
-      </button>
+      {offerJson && (
+        <button
+          ref={firstRef}
+          type="button"
+          onClick={() => onSelect('json')}
+          className="rounded-lg border border-surface-300 p-4 text-left transition-colors hover:border-primary-400 hover:bg-primary-50 focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+        >
+          <span className="block font-display font-semibold text-primary-900">
+            JSON
+          </span>
+          <span className="block text-sm text-primary-700">
+            Full architecture
+          </span>
+          <span className="mt-1 block text-xs text-primary-500">
+            Import a previously exported Stackmap file
+          </span>
+        </button>
+      )}
 
       <button
+        ref={offerJson ? undefined : firstRef}
         type="button"
         onClick={() => onSelect('csv')}
         className="rounded-lg border border-surface-300 p-4 text-left transition-colors hover:border-primary-400 hover:bg-primary-50 focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
@@ -300,6 +363,24 @@ function FormatStep({ onSelect, firstRef }: FormatStepProps) {
           Import a spreadsheet of tools and systems
         </span>
       </button>
+
+      {offerSpend && (
+        <button
+          type="button"
+          onClick={() => onSelect('spend')}
+          className="col-span-2 rounded-lg border border-surface-300 p-4 text-left transition-colors hover:border-primary-400 hover:bg-primary-50 focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+        >
+          <span className="block font-display font-semibold text-primary-900">
+            Spend
+          </span>
+          <span className="block text-sm text-primary-700">
+            Accounting or bank export
+          </span>
+          <span className="mt-1 block text-xs text-primary-500">
+            Find the tools you pay for, with what they actually cost
+          </span>
+        </button>
+      )}
     </div>
   );
 }
@@ -323,6 +404,13 @@ function FileStep({ format, onFileChange, onBack, firstRef }: FileStepProps) {
       >
         {label}
       </label>
+      {format === 'spend' && (
+        <p className="text-sm text-primary-600">
+          Export your transactions from your accounting software or online banking. Stackmap
+          reads the payee, amount and date columns, and looks for tools it recognises. The file
+          is read in your browser and never uploaded.
+        </p>
+      )}
       <input
         id="import-file-input"
         type="file"
@@ -380,6 +468,92 @@ function JsonPreviewStep({ arch, onImport, onCancel, firstRef }: JsonPreviewStep
           className="inline-flex items-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
         >
           Replace current data
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-surface-100 focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+interface SpendPreviewStepProps {
+  matches: SpendMatch[];
+  unmatched: SpendMatch[];
+  warnings: string[];
+  selected: Set<string>;
+  onToggle: (originalPayee: string) => void;
+  onImport: () => void;
+  onCancel: () => void;
+  firstRef: React.RefObject<HTMLButtonElement | null>;
+}
+
+function SpendPreviewStep({
+  matches,
+  unmatched,
+  warnings,
+  selected,
+  onToggle,
+  onImport,
+  onCancel,
+  firstRef,
+}: SpendPreviewStepProps) {
+  const chosen = selected.size;
+
+  return (
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+      <p className="text-sm text-primary-700" data-testid="spend-summary">
+        Found <span className="font-semibold">{matches.length}</span>{' '}
+        {matches.length === 1 ? 'payee that looks like a tool' : 'payees that look like tools'}
+        {unmatched.length > 0 && `, and ${unmatched.length} it did not recognise`}.
+      </p>
+
+      <SpendPreviewTable
+        matches={matches}
+        selected={selected}
+        onToggle={onToggle}
+        caption="Tools Stackmap recognised"
+      />
+
+      {unmatched.length > 0 && (
+        <details>
+          <summary className="cursor-pointer text-sm font-medium text-primary-700">
+            Show the {unmatched.length} it did not recognise
+          </summary>
+          <p className="text-xs text-primary-600 my-2">
+            These might be software too — tick anything that belongs on your map. Rent,
+            salaries and suppliers do not.
+          </p>
+          <SpendPreviewTable
+            matches={unmatched}
+            selected={selected}
+            onToggle={onToggle}
+            caption="Other payees"
+          />
+        </details>
+      )}
+
+      {warnings.length > 0 && (
+        <ul className="text-sm text-amber-700">
+          {warnings.map((w, i) => (
+            <li key={i}>{w}</li>
+          ))}
+        </ul>
+      )}
+
+      <div className="flex gap-3">
+        <button
+          ref={firstRef}
+          type="button"
+          onClick={onImport}
+          disabled={chosen === 0}
+          className="inline-flex items-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+        >
+          Add {chosen} {chosen === 1 ? 'system' : 'systems'}
         </button>
         <button
           type="button"

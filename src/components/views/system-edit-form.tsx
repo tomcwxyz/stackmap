@@ -109,7 +109,17 @@ function toDraft(system: System): Draft {
   };
 }
 
-function toUpdates(draft: Draft): Partial<Omit<System, 'id'>> {
+/** True when the user actually altered the figure, rather than just saving. */
+function costChanged(draft: Draft, original: System): boolean {
+  const amount = parseFloat(draft.costAmount);
+  return (
+    amount !== original.cost?.amount ||
+    draft.costPeriod !== original.cost?.period ||
+    draft.costModel !== original.cost?.model
+  );
+}
+
+function toUpdates(draft: Draft, original: System): Partial<Omit<System, 'id'>> {
   const amount = parseFloat(draft.costAmount);
   const importance = parseInt(draft.importance, 10);
   const seats = parseInt(draft.seats, 10);
@@ -125,7 +135,15 @@ function toUpdates(draft: Draft): Partial<Omit<System, 'id'>> {
     ownerId: draft.ownerId || undefined,
     cost:
       !isNaN(amount) && amount >= 0
-        ? { amount, period: draft.costPeriod, model: draft.costModel }
+        ? {
+            amount,
+            period: draft.costPeriod,
+            model: draft.costModel,
+            // Saving a form without touching the figure is not the same as
+            // typing one: leaving an estimate alone should not promote it to
+            // something a later spend import must not replace.
+            source: costChanged(draft, original) ? 'user' : original.cost?.source,
+          }
         : undefined,
     importance: !isNaN(importance) ? importance : undefined,
     isShadow: draft.isShadow || undefined,
@@ -164,7 +182,7 @@ export function SystemEditForm({
       onSubmit={(e) => {
         e.preventDefault();
         if (nameIsEmpty) return;
-        onSave(toUpdates(draft));
+        onSave(toUpdates(draft, system));
       }}
     >
       <div className="grid gap-4 sm:grid-cols-2">

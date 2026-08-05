@@ -89,6 +89,16 @@ export interface System {
     amount: number;
     period: 'monthly' | 'annual';
     model: 'subscription' | 'perpetual' | 'free' | 'unknown';
+    /**
+     * Where the figure came from, so one source does not quietly overwrite a
+     * better one. The cost model is not provenance: a guessed subscription
+     * price and a typed one both read as `subscription`.
+     *
+     * Absent on maps written before this existed. Those are treated as though
+     * a person entered them, because destroying a deliberate figure is worse
+     * than leaving a stale estimate in place.
+     */
+    source?: 'user' | 'estimate' | 'spend';
   };
   techFreedomScore?: TechFreedomScore;
   importance?: number;
@@ -101,12 +111,27 @@ export interface System {
   noticePeriodDays?: number;
 }
 
+/** Article 6 lawful bases, in the wording the ICO uses. */
+export type LawfulBasis =
+  | 'consent'
+  | 'contract'
+  | 'legal_obligation'
+  | 'vital_interests'
+  | 'public_task'
+  | 'legitimate_interests';
+
 export interface DataCategory {
   id: string;
   name: string;
   sensitivity: 'public' | 'internal' | 'confidential' | 'restricted';
   containsPersonalData: boolean;
   systemIds: string[];
+  /** Who the data is about — "clients", "staff", "donors". */
+  subjects?: string;
+  /** How long it is kept, in the organisation's own words. */
+  retention?: string;
+  /** Why the organisation is allowed to hold it. */
+  lawfulBasis?: LawfulBasis;
 }
 
 export interface Integration {
@@ -128,6 +153,61 @@ export interface Owner {
   contactInfo?: string;
 }
 
+export type ExternalPartyType =
+  | 'funder'
+  | 'regulator'
+  | 'auditor'
+  | 'partner'
+  | 'supplier'
+  | 'other';
+
+/** Where a party holds data, which is what matters for a transfer. */
+export type PartyLocation = 'uk' | 'eea' | 'rest_of_world' | 'unknown';
+
+/**
+ * Someone outside the organisation that data goes to.
+ *
+ * Funders, regulators, auditors and delivery partners are where most of a small
+ * charity's reporting obligations live, and the map stopped at the organisation
+ * boundary without them.
+ */
+export interface ExternalParty {
+  id: string;
+  name: string;
+  type: ExternalPartyType;
+  description?: string;
+  location?: PartyLocation;
+  contactInfo?: string;
+}
+
+export type DataFlowMethod =
+  | 'api'
+  | 'file_transfer'
+  | 'portal'
+  | 'email'
+  | 'post'
+  | 'manual'
+  | 'unknown';
+
+export type DataFlowFrequency =
+  | 'real_time'
+  | 'scheduled'
+  | 'on_demand'
+  | 'annual'
+  | 'unknown';
+
+/** Data leaving a system for someone outside the organisation. */
+export interface DataFlow {
+  id: string;
+  systemId: string;
+  partyId: string;
+  dataCategoryIds: string[];
+  /** Why the data is shared — the question a regulator asks first. */
+  purpose?: string;
+  method: DataFlowMethod;
+  frequency: DataFlowFrequency;
+}
+
 export type MappingPath = 'function_first' | 'service_first';
 
 export interface Architecture {
@@ -138,6 +218,8 @@ export interface Architecture {
   dataCategories: DataCategory[];
   integrations: Integration[];
   owners: Owner[];
+  externalParties: ExternalParty[];
+  dataFlows: DataFlow[];
   metadata: {
     version: string;
     exportedAt: string;

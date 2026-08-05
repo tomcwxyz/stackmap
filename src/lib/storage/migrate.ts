@@ -7,6 +7,8 @@ import {
   DataCategorySchema,
   IntegrationSchema,
   OwnerSchema,
+  ExternalPartySchema,
+  DataFlowSchema,
 } from '@/lib/schema';
 import type { Architecture } from '@/lib/types';
 import { SCHEMA_VERSION, STACKMAP_VERSION } from '@/lib/version';
@@ -144,6 +146,25 @@ export function migrateArchitecture(raw: unknown): MigrationResult {
     OwnerSchema,
   );
 
+  const externalParties = keepValid(
+    asArray(raw.externalParties)
+      .filter(isRecord)
+      .map((party) => ({ ...party, type: party.type ?? 'other' })),
+    ExternalPartySchema,
+  );
+
+  const dataFlows = keepValid(
+    asArray(raw.dataFlows)
+      .filter(isRecord)
+      .map((flow) => ({
+        ...flow,
+        dataCategoryIds: asArray(flow.dataCategoryIds),
+        method: flow.method ?? 'unknown',
+        frequency: flow.frequency ?? 'unknown',
+      })),
+    DataFlowSchema,
+  );
+
   const droppedCount =
     functions.dropped +
     services.dropped +
@@ -151,6 +172,8 @@ export function migrateArchitecture(raw: unknown): MigrationResult {
     dataCategories.dropped +
     integrations.dropped +
     owners.dropped +
+    externalParties.dropped +
+    dataFlows.dropped +
     // Entries that were not objects at all never reached keepValid
     countNonRecords(raw);
 
@@ -169,6 +192,8 @@ export function migrateArchitecture(raw: unknown): MigrationResult {
     dataCategories: dataCategories.kept,
     integrations: integrations.kept,
     owners: owners.kept,
+    externalParties: externalParties.kept,
+    dataFlows: dataFlows.kept,
     metadata: {
       ...metadata,
       version: asString(metadata.version, SCHEMA_VERSION),
@@ -195,6 +220,8 @@ const COLLECTION_KEYS = [
   'dataCategories',
   'integrations',
   'owners',
+  'externalParties',
+  'dataFlows',
 ] as const;
 
 /** Count collection entries that were not objects, since those are dropped too. */

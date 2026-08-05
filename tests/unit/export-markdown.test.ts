@@ -21,6 +21,8 @@ function createBlankArchitecture(): Architecture {
     dataCategories: [],
     integrations: [],
     owners: [],
+    externalParties: [],
+    dataFlows: [],
     metadata: {
       version: '1.0.0',
       exportedAt: '2025-06-15T00:00:00Z',

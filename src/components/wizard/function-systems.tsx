@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useArchitecture } from '@/hooks/useArchitecture';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import type { SystemType, StandardFunction } from '@/lib/types';
+import type { System, SystemType, StandardFunction } from '@/lib/types';
 import type { TechFreedomScore, KnownTool } from '@/lib/techfreedom/types';
 import { findMatchingTool } from '@/lib/techfreedom/match';
 import { KNOWN_TOOLS } from '@/lib/techfreedom/tools';
@@ -14,6 +14,7 @@ import { totalScore, riskLevel } from '@/lib/techfreedom/risk';
 import { estimateToolCost, DEFAULT_STAFF } from '@/lib/cost-estimates';
 import { getSuggestedSystems } from '@/lib/function-templates';
 import type { FunctionSystemSuggestion } from '@/lib/function-templates';
+import { getSectorSuggestions } from '@/lib/sector-functions';
 
 const SYSTEM_TYPES: { value: SystemType; label: string }[] = [
   { value: 'crm', label: 'CRM' },
@@ -50,11 +51,8 @@ interface SystemFormData {
   costModel: CostModel;
 }
 
-interface SystemCost {
-  amount: number;
-  period: CostPeriod;
-  model: CostModel;
-}
+/** The shape stored on a system, so the two cannot drift apart. */
+type SystemCost = NonNullable<System['cost']>;
 
 interface SystemEntry {
   id: string;
@@ -187,7 +185,14 @@ export function FunctionSystems() {
 
   // Get suggestions for the active function, filtered by org type and size
   const suggestions = useMemo(() => {
-    if (!activeFunction || activeFunction.type === 'custom') return [];
+    if (!activeFunction) return [];
+
+    // Sector functions are stored as custom ones, so their suggestions are
+    // looked up by name rather than by function type
+    if (activeFunction.type === 'custom') {
+      return getSectorSuggestions(activeFunction.name, orgType);
+    }
+
     return getSuggestedSystems(
       activeFunction.type as StandardFunction,
       orgType,
@@ -231,6 +236,7 @@ export function FunctionSystems() {
           amount: estimate.annualTotal,
           period: 'annual',
           model: estimate.annualTotal === 0 ? 'free' : 'subscription',
+          source: 'estimate',
         };
       }
 
@@ -339,6 +345,7 @@ export function FunctionSystems() {
         amount: costAmount,
         period: formData.costPeriod,
         model: formData.costModel,
+        source: 'user',
       };
     }
 
@@ -435,6 +442,7 @@ export function FunctionSystems() {
           amount: parsed,
           period: period as 'monthly' | 'annual',
           model: parsed === 0 ? ('free' as const) : (model as 'subscription' | 'perpetual' | 'free' | 'unknown'),
+          source: 'user',
         };
       }
 
