@@ -257,3 +257,41 @@ test.describe('several maps', () => {
     await expect(page.getByRole('cell', { name: 'Slack', exact: true })).toHaveCount(0);
   });
 });
+
+test.describe('importing spend', () => {
+  const STATEMENT = 'tests/fixtures/starling-shaped-statement.csv';
+
+  test('reads a bank export whose headers it was never taught', async ({ page }) => {
+    await fillOrganisation(page, 'Sunrise Trust');
+
+    await page.getByRole('button', { name: /^import$/i }).first().click();
+    await page.getByText(/accounting or bank export/i).click();
+    await page.locator('input[type="file"]').setInputFiles(STATEMENT);
+
+    // Straight to the preview: no column questions for a file it can read
+    await expect(page.getByTestId('spend-summary')).toContainText(
+      /payees that look like tools/i,
+    );
+  });
+
+  test('lets the user pick the columns when the guess is wrong', async ({ page }) => {
+    await fillOrganisation(page, 'Sunrise Trust');
+
+    await page.getByRole('button', { name: /^import$/i }).first().click();
+    await page.getByText(/accounting or bank export/i).click();
+    await page.locator('input[type="file"]').setInputFiles(STATEMENT);
+    await expect(page.getByTestId('spend-summary')).toBeVisible();
+
+    await page.getByRole('button', { name: /choose them yourself/i }).click();
+
+    // Pre-filled with what was detected, and the balance is not mistaken for it
+    await expect(page.getByLabel(/who was paid/i)).toHaveValue('Counter Party');
+    await expect(page.getByLabel(/how much/i)).toHaveValue('Amount (GBP)');
+
+    // Reading the raw card descriptor instead still works
+    await page.getByLabel(/who was paid/i).selectOption('Reference');
+    await page.getByRole('button', { name: /read the file/i }).click();
+
+    await expect(page.getByTestId('spend-summary')).toBeVisible();
+  });
+});

@@ -5,6 +5,7 @@ import {
   inferCadence,
   annualiseSpend,
   parseSpendCsv,
+  inspectSpendCsv,
 } from '@/lib/import/parse-spend';
 
 function dates(...isoDates: string[]): Date[] {
@@ -264,5 +265,135 @@ describe('parseSpendCsv', () => {
     expect(result.success).toBe(true);
     if (!result.success) return;
     expect(result.matches[0].tool?.name).toBe('Salesforce');
+  });
+});
+
+describe('inspectSpendCsv', () => {
+  // A real Starling export: none of the header names match the conventions
+  // the importer grew up on.
+  const starling = [
+    'Date,Counter Party,Reference,Type,Amount (GBP),Balance (GBP),Spending Category,Notes',
+    '02/05/2026,Google Cloud,Google Workspace_good-,CARD SUBSCRIPTION,-26.08,1101.78,ADMIN,',
+    '07/05/2026,Supabase,SUPABASE,ONLINE PAYMENT,-25.01,482.11,ADMIN,',
+    '20/05/2026,SOS - UK,INV-2026-0008,FASTER PAYMENT,4000,4099.33,REVENUE,',
+  ].join('\n');
+
+  it('reports the file’s own headers, so a person can recognise them', () => {
+    const result = inspectSpendCsv(starling);
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.preview.headers).toContain('Counter Party');
+    expect(result.preview.headers).toContain('Spending Category');
+  });
+
+  it('shows a few rows, since a header name alone often does not say enough', () => {
+    const result = inspectSpendCsv(starling);
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.preview.sampleRows).toHaveLength(3);
+    expect(result.preview.sampleRows[0]['Counter Party']).toBe('Google Cloud');
+  });
+
+  it('suggests the columns it recognised', () => {
+    const result = inspectSpendCsv(starling);
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.preview.suggested).toMatchObject({
+      payee: 'Counter Party',
+      amount: 'Amount (GBP)',
+      date: 'Date',
+    });
+  });
+
+  it('never suggests a running balance as the amount', () => {
+    // It sits next to the amount and is the same shape, so partial matching
+    // will take it and report an account balance as a software bill.
+    const result = inspectSpendCsv(starling);
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.preview.suggested.amount).not.toBe('Balance (GBP)');
+  });
+
+  it('still describes a file it cannot make sense of', () => {
+    const result = inspectSpendCsv('Alpha,Beta\n1,2\n');
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.preview.headers).toEqual(['Alpha', 'Beta']);
+    expect(result.preview.suggested.payee).toBeUndefined();
+  });
+
+  it('refuses a file with no rows', () => {
+    const result = inspectSpendCsv('Payee,Amount\n');
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('parseSpendCsv with a column mapping', () => {
+  const starling = [
+    'Date,Counter Party,Reference,Type,Amount (GBP),Balance (GBP)',
+    '02/05/2026,Google Cloud,Google Workspace_good-,CARD SUBSCRIPTION,-26.08,1101.78',
+    '02/06/2026,Google Cloud,Google Workspace_good-,CARD SUBSCRIPTION,-26.08,2025.86',
+    '02/07/2026,Google Cloud,Google Workspace_good-,CARD SUBSCRIPTION,-26.08,5338.98',
+  ].join('\n');
+
+  it('reads a Starling export without being told anything', () => {
+    const result = parseSpendCsv(starling);
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.matches[0].payee).toBe('Google Cloud');
+    expect(result.matches[0].transactions).toBe(3);
+  });
+
+  it('does not mistake the running balance for the amount', () => {
+    const result = parseSpendCsv(starling);
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    // £26.08 a month, not the four-figure balance sitting next to it
+    expect(result.matches[0].estimatedAnnualCost).toBe(313);
+  });
+
+  it('uses the column the user chose over the one it guessed', () => {
+    const result = parseSpendCsv(starling, {
+      payee: 'Reference',
+      amount: 'Amount (GBP)',
+      date: 'Date',
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.matches[0].originalPayee).toBe('Google Workspace_good-');
+  });
+
+  it('treats a chosen debit column as money out, negative or not', () => {
+    const csv = ['Supplier,Paid,Balance', 'XERO,33.00,500.00', 'XERO,33.00,467.00'].join('\n');
+
+    const result = parseSpendCsv(csv, {
+      payee: 'Supplier',
+      amount: 'Paid',
+      amountIsDebitOnly: true,
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.matches[0].totalAmount).toBe(66);
+  });
+
+  it('says so when a chosen column is not in the file', () => {
+    const result = parseSpendCsv(starling, {
+      payee: 'Not A Column',
+      amount: 'Amount (GBP)',
+    });
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error).toMatch(/no column called "Not A Column"/i);
   });
 });

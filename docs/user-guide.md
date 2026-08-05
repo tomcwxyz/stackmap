@@ -610,7 +610,8 @@ browser — the file is never uploaded anywhere.
 
 ### What it does
 
-- Finds the payee, amount and date columns, whatever they are called
+- Finds the payee, amount and date columns, whatever they are called — Starling's
+  "Counter Party", Xero's "Contact" and most banks' "Description" are all understood
 - Ignores money coming in, so grants and donations are not mistaken for costs
 - Cleans up payee text: `SP * CANVA I0F2K3` and `GOOGLE *GSUITE_yourorg` become
   Canva and Google Workspace
@@ -630,6 +631,28 @@ software it has not heard of, most will be rent, salaries and suppliers.
 Systems added this way carry the cost you actually paid, which is better than any
 estimate. If a system is already on your map, importing spend fills in a cost that
 was missing but never overwrites a figure you typed in yourself.
+
+### If it reads the wrong columns
+
+There are as many header conventions as there are banks, so no list covers all of
+them. Two things follow from that:
+
+- **If nothing looks familiar, Stackmap asks** rather than refusing the file. You
+  pick which column holds who was paid, how much, and when.
+- **If it guessed and got it wrong,** choose *Reading the wrong columns? Choose them
+  yourself* on the preview. What it detected is filled in ready to correct, and the
+  file is re-read without you having to pick it again.
+
+Each column is listed with a couple of real values from your file next to it, since
+a header name on its own often does not tell you which one you want.
+
+Two things are worth knowing when picking by hand:
+
+- **The amount is not the balance.** Most bank exports put a running balance right
+  next to the amount and it looks identical. Stackmap will never suggest a balance
+  column, but you can pick one by mistake.
+- **Tick "only ever money going out"** if your file has separate "Money out" and
+  "Money in" columns. Otherwise Stackmap treats negative amounts as spending.
 
 !!! tip
     A full year of transactions gives the best results. A shorter export still
