@@ -431,6 +431,9 @@ On mobile, use the left and right arrows to navigate between steps.
 
 To start completely fresh, go to the path selection page (the first step). If you have existing data, you will see a banner offering to "Start fresh." Click it, then confirm. This removes all data from your browser's local storage and cannot be undone.
 
+Underneath it, **Or clear one part at a time** empties a single section — see
+[Clearing one part at a time](#clearing-one-part-at-a-time).
+
 ### Cost overview and overlap detection
 
 The review step includes a cost overview showing:
@@ -836,3 +839,56 @@ one before a big change and you can put it back if the change was wrong.
     Snapshots are stored in the same browser as the map, so they protect against
     a bad edit — not against a lost laptop or a cleared browser. Export as JSON
     for anything you cannot afford to lose.
+
+---
+
+## 24. Worked Examples
+
+The suggestion lists tell you what tools a small charity might have. They do not
+tell you what a finished map looks like, which is the thing that decides whether
+this is worth an afternoon.
+
+Three complete examples are offered on the first step of the wizard and on
+**Your maps**. Each is a whole organisation — functions, systems with real
+costs, owners, data categories, connections, who the data goes to, and the
+things nobody got round to.
+
+| Example | What it shows |
+|---------|---------------|
+| **Riverside Advice** | A nine-person advice charity, mapped function-first. Two CRMs nobody has reconciled, a renewal whose notice period has already passed, and client data in a spreadsheet outside the case management system |
+| **Green Futures CIC** | A 38-person social enterprise, mapped service-first. Two project tools in parallel, a system inherited in a merger and being retired, and personal data going to a processor in the EEA |
+| **Northfield Borough Council** | A district council with its own sector functions — Revenues & Benefits, Planning, Waste, Customer Services — a mostly on-premise estate, and a line-of-business system with no supported upgrade path |
+
+### Opening one
+
+Press **Open this example** and it arrives as a new map of its own, named
+"… (example)", and opens on the review so you can see the lot at once.
+
+Nothing you have already made is touched. The example sits alongside your own
+maps on **Your maps**, and you can delete it there when it has done its job.
+
+### Making one your own
+
+An example is a reasonable starting point for a similar organisation. Rename it
+on **Your maps**, change the organisation name on the first wizard step, then
+work through it replacing what does not apply. Where a whole section is wrong,
+clear that section rather than editing it row by row.
+
+### Clearing one part at a time
+
+On the first step of the wizard, under "Start fresh", is **Or clear one part at
+a time**. Only sections with something in them are offered, and each button says
+how many entries it holds.
+
+| Clearing | Also removes |
+|----------|--------------|
+| **Systems** | Connections, and everything recorded about who your data goes to. Services and data categories keep their entries, but no longer point at any system |
+| **Functions** | Nothing else; systems and services simply stop being filed under a function |
+| **Services** | Nothing else; systems stop being filed under a service |
+| **Data categories** | Nothing else; what you share stops naming which data it covers |
+| **Connections** | Nothing else |
+| **Owners** | Nothing else; systems stop naming an owner |
+| **Who sees your data** | Both the organisations and what goes to them |
+
+Each asks first and says what goes with it. Clearing cannot be undone, so take a
+snapshot on **Your maps** first if you are not certain.

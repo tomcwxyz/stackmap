@@ -25,6 +25,7 @@ export class LocalStorageAdapter implements StorageAdapter {
   private inMemoryBackup: string | null = null;
   private readonly useMemory: boolean;
   private readonly fixedMapId?: string;
+  private boundKey: string | null = null;
   private lastLoadReport: LoadReport | null = null;
 
   constructor(options?: LocalStorageAdapterOptions) {
@@ -32,14 +33,8 @@ export class LocalStorageAdapter implements StorageAdapter {
     this.fixedMapId = options?.mapId;
   }
 
-  /**
-   * The key this adapter works against.
-   *
-   * Resolved per call rather than in the constructor: switching map writes a
-   * new active id, and an adapter that cached the old one would go on writing
-   * the previous map's document.
-   */
-  private storageKey(): string {
+  /** Which map is active right now, according to the workspace. */
+  private activeKey(): string {
     if (this.fixedMapId) return mapStorageKey(this.fixedMapId);
 
     try {
@@ -53,6 +48,20 @@ export class LocalStorageAdapter implements StorageAdapter {
       // No workspace, or an unreadable one: the original single map
       return mapStorageKey(DEFAULT_MAP_ID);
     }
+  }
+
+  /**
+   * The key this adapter works against, fixed at first use.
+   *
+   * An adapter stands for one open document, so it must keep writing to the
+   * map it read. Re-resolving the active map on every write loses data: making
+   * a map switches to it, and anything the old page still had in hand — a
+   * debounced edit, a flush on the way out — would land on top of the new map
+   * and overwrite it with the previous map's contents.
+   */
+  private storageKey(): string {
+    this.boundKey ??= this.activeKey();
+    return this.boundKey;
   }
 
   private static isLocalStorageAvailable(): boolean {

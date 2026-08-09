@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { ExamplePicker } from '@/components/examples/example-picker';
 
 function formatDate(iso: string): string {
   if (!iso) return 'never';
@@ -366,6 +367,10 @@ export function MapsView() {
           </div>
         </div>
       </section>
+
+      <div className="pt-4 border-t border-surface-200">
+        <ExamplePicker />
+      </div>
 
       <div className="pt-4 border-t border-surface-200">
         <Link href="/view/systems" className="btn-secondary text-sm px-3 py-1.5 inline-flex">

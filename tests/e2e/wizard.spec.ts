@@ -390,3 +390,46 @@ test.describe('importing spend', () => {
   });
 });
 
+test.describe('worked examples', () => {
+  test('opens a finished map without touching what you already have', async ({ page }) => {
+    // Somebody deciding whether this is worth an afternoon should be able to
+    // look at a finished map first, and not lose their own work doing it
+    await startWizard(page, 'Sunrise Trust');
+    await skipRiskAssessment(page);
+    await pickFunctions(page, ['Finance']);
+    await addSystem(page, 'Xero');
+
+    await page.goto('/wizard');
+    await page.getByRole('button', { name: /open this example/i }).first().click();
+
+    await page.waitForURL('**/review');
+    await expect(
+      page.getByRole('heading', { name: /technology map for riverside advice/i }),
+    ).toBeVisible();
+
+    // The original is still there, under its own name
+    await page.goto('/maps');
+    const mapNames = page.getByRole('list').first();
+    await expect(mapNames.getByText('Riverside Advice (example)', { exact: true })).toBeVisible();
+    await expect(mapNames.getByText('Sunrise Trust', { exact: true })).toBeVisible();
+  });
+
+  test('clears one part of a map without taking the rest', async ({ page }) => {
+    await startWizard(page, 'Sunrise Trust');
+    await skipRiskAssessment(page);
+    await pickFunctions(page, ['Finance']);
+    await addSystem(page, 'Xero');
+
+    await page.goto('/wizard');
+    await page.getByRole('button', { name: /^systems \(1\)$/i }).click();
+    await page.getByRole('button', { name: /yes, clear systems/i }).click();
+
+    await page.goto('/view/systems');
+    await expect(page.getByRole('heading', { name: /no systems yet/i })).toBeVisible();
+
+    // The function survived
+    await page.goto('/wizard/functions');
+    await expect(page.getByRole('checkbox', { name: /finance/i })).toBeChecked();
+  });
+});
+

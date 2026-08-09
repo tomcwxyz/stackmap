@@ -15,6 +15,8 @@ export interface WorkspaceState {
 
 export interface WorkspaceActions extends WorkspaceState {
   createMap: (name: string) => void;
+  /** Adds a map with content already in it and switches to it. */
+  createMapFrom: (name: string, architecture: Architecture) => void;
   duplicateActiveMap: (name: string) => void;
   renameMap: (id: string, name: string) => void;
   deleteMap: (id: string) => void;
@@ -92,6 +94,17 @@ export function useWorkspace(): WorkspaceActions {
     emitChange();
   }, []);
 
+  // Loading an example never touches what the user already has: it arrives as
+  // its own map, which they can delete when they have finished looking.
+  const createMapFrom = useCallback((name: string, architecture: Architecture) => {
+    const workspace = getStore();
+    const id = uuidv4();
+    workspace.createMap(name, id);
+    workspace.writeMap(id, architecture);
+    workspace.switchTo(id);
+    emitChange();
+  }, []);
+
   const duplicateActiveMap = useCallback((name: string) => {
     const workspace = getStore();
     workspace.duplicateMap(workspace.getActiveMapId(), name, uuidv4());
@@ -142,6 +155,7 @@ export function useWorkspace(): WorkspaceActions {
   return {
     ...state,
     createMap,
+    createMapFrom,
     duplicateActiveMap,
     renameMap,
     deleteMap,
