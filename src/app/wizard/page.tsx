@@ -4,6 +4,8 @@ import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useArchitecture } from '@/hooks/useArchitecture';
 import { ImportDialog } from '@/components/import/import-dialog';
+import { ExamplePicker } from '@/components/examples/example-picker';
+import { ClearSections } from '@/components/wizard/clear-sections';
 import { addSpendToArchitecture } from '@/lib/import';
 import type { SpendMatch } from '@/lib/import';
 import type { FunctionAssignments } from '@/lib/import/spend-to-systems';
@@ -155,6 +157,10 @@ export default function PathSelectorPage() {
         )}
       </section>
 
+      {/* Worked examples, for anyone deciding whether this is worth an
+          afternoon before they have typed anything */}
+      <ExamplePicker />
+
       {/* Existing data banner */}
       {hasExistingData && !showConfirm && (
         <div className="rounded-lg border-2 border-accent-200 bg-accent-50 p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
@@ -173,6 +179,13 @@ export default function PathSelectorPage() {
           >
             Start fresh
           </button>
+        </div>
+      )}
+
+      {/* Starting again on one step should not cost the others */}
+      {hasExistingData && !showConfirm && (
+        <div className="rounded-lg border border-surface-300 bg-white p-4">
+          <ClearSections />
         </div>
       )}
 

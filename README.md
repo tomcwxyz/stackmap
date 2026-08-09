@@ -3,7 +3,7 @@
 **Lightweight architecture mapping for social purpose organisations.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-1146%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-1207%20passing-brightgreen.svg)]()
 [![WCAG 2.1 AA](https://img.shields.io/badge/accessibility-WCAG%202.1%20AA-blue.svg)]()
 
 ---
@@ -30,6 +30,8 @@ Stackmap is an open source tool that solves this problem. It provides a guided w
 - **Systems inventory** — search, filter, sort, edit and delete every system in one place after the wizard, including which functions it is used for
 - **Board report** — a printable one-page summary for trustees and funders
 - **Several maps and snapshots** — keep a map per organisation, copy one to try a change, and restore a labelled snapshot when the change was wrong
+- **Three worked examples** — complete maps of an advice charity, a social enterprise and a district council, loose ends and all, each opening as a map of its own so nothing you have made is touched
+- **Clear one part at a time** — empty the systems, functions, services, data, connections, owners or sharing on their own, instead of choosing between editing row by row and starting again on everything
 - **External sharing** — record the funders, regulators, auditors and partners your data goes to, what goes to each and why, and whether it leaves the UK
 - **Draft data protection record** — a starting point for the UK GDPR Article 30 register, built from the map and exportable as a spreadsheet
 - **Live architecture map sidebar** showing your map as you build it
@@ -84,6 +86,7 @@ src/
 │   ├── wizard/             # Wizard-specific components (steps, forms, sidebar)
 │   ├── techfreedom/        # Risk badge, radar chart, risk details
 │   ├── import/             # Import dialog and CSV preview
+│   ├── examples/           # The worked-example picker
 │   ├── views/              # Systems table, diagram, board report, ROPA, maps
 │   └── layout/             # Header, footer, storage notice
 ├── lib/
@@ -97,6 +100,7 @@ src/
 │   ├── cost-estimates.ts      # Cost estimation with tiered pricing
 │   ├── storage/            # Storage adapter, migration, workspace, localStorage backend
 │   ├── import/             # CSV and JSON import
+│   ├── examples/           # The three worked example maps
 │   ├── export/             # Markdown and CSV export
 │   ├── analysis/           # Risk against importance, duplication, renewals
 │   ├── report/             # Board report and Article 30 record
@@ -130,7 +134,7 @@ npm run typecheck     # TypeScript type checking
 
 ### Testing
 
-Stackmap follows a strict TDD workflow (red, green, refactor). The test suite currently includes **1146 tests across 84 test files**.
+Stackmap follows a strict TDD workflow (red, green, refactor). The test suite currently includes **1207 tests across 87 test files**.
 
 Every component test includes an accessibility check using jest-axe:
 

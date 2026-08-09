@@ -20,6 +20,7 @@ vi.mock('@/hooks/useArchitecture', () => ({
     },
     setTechFreedomEnabled: setTechFreedomEnabledMock,
     replaceArchitecture: vi.fn(),
+    clearSection: vi.fn(),
   }),
 }));
 

@@ -108,6 +108,7 @@ const mockContext = (): ArchitectureContextValue => ({
   updateDataFlow: vi.fn(),
   removeDataFlow: vi.fn(),
   replaceArchitecture: vi.fn(),
+  clearSection: vi.fn(),
   setTechFreedomEnabled: vi.fn(),
   save: vi.fn().mockResolvedValue(undefined),
   clear: vi.fn().mockResolvedValue(undefined),

@@ -205,9 +205,9 @@ describe('LocalStorageAdapter', () => {
       expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
     });
 
-    it('follows a switch made after it was constructed', async () => {
-      await adapter.save(mockArchitecture);
-      expect(localStorage.getItem(STORAGE_KEY)).not.toBeNull();
+    it('keeps writing to the map it opened when another is switched to', async () => {
+      // Otherwise a page still holding the old map flushes it over the new one
+      await adapter.load();
 
       localStorage.setItem(
         WORKSPACE_KEY,
@@ -216,8 +216,27 @@ describe('LocalStorageAdapter', () => {
           maps: [{ id: 'm2', name: 'Second', createdAt: '', updatedAt: '' }],
         }),
       );
+      await adapter.save(mockArchitecture);
 
-      await expect(adapter.load()).resolves.toBeNull();
+      expect(localStorage.getItem(STORAGE_KEY)).not.toBeNull();
+      expect(localStorage.getItem(mapStorageKey('m2'))).toBeNull();
+    });
+
+    it('opens whichever map is active when it is first used', async () => {
+      const fresh = new LocalStorageAdapter();
+      localStorage.setItem(
+        WORKSPACE_KEY,
+        JSON.stringify({
+          activeMapId: 'm2',
+          maps: [{ id: 'm2', name: 'Second', createdAt: '', updatedAt: '' }],
+        }),
+      );
+
+      await fresh.load();
+      await fresh.save(mockArchitecture);
+
+      expect(localStorage.getItem(mapStorageKey('m2'))).not.toBeNull();
+      expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
     });
 
     it('can be pinned to one map regardless of what is active', async () => {

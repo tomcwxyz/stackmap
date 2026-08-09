@@ -47,6 +47,16 @@ function describeSaveError(error: unknown): string {
   return 'Your map could not be saved in this browser.';
 }
 
+/** A part of the map that can be emptied on its own. */
+export type MapSection =
+  | 'functions'
+  | 'services'
+  | 'systems'
+  | 'dataCategories'
+  | 'integrations'
+  | 'owners'
+  | 'sharing';
+
 // ─── Context value shape ───
 
 export interface ArchitectureContextValue {
@@ -96,6 +106,7 @@ export interface ArchitectureContextValue {
 
   // Bulk replace
   replaceArchitecture: (arch: Architecture) => void;
+  clearSection: (section: MapSection) => void;
 
   // Metadata
   setTechFreedomEnabled: (enabled: boolean) => void;
@@ -557,6 +568,67 @@ export function ArchitectureProvider({
     setArchitecture(arch);
   }, []);
 
+  /**
+   * Empty one part of the map without touching the rest.
+   *
+   * Starting again on the integrations does not mean starting again on
+   * everything, and an example is much easier to make your own if you can
+   * clear the bits that are not yours a section at a time.
+   *
+   * Each case also removes what pointed at the cleared entities. A reference to
+   * something that no longer exists is worse than nothing: the map still counts
+   * it, and the thing holding the reference quietly drops out of its grouping.
+   */
+  const clearSection = useCallback(
+    (section: MapSection) => {
+      updateArch((prev) => {
+        switch (section) {
+          case 'functions':
+            return {
+              ...prev,
+              functions: [],
+              systems: prev.systems.map((s) => ({ ...s, functionIds: [] })),
+              services: prev.services.map((svc) => ({ ...svc, functionIds: [] })),
+            };
+          case 'services':
+            return {
+              ...prev,
+              services: [],
+              systems: prev.systems.map((s) => ({ ...s, serviceIds: [] })),
+            };
+          case 'systems':
+            // Everything else hangs off systems, so this is the widest cut
+            return {
+              ...prev,
+              systems: [],
+              services: prev.services.map((svc) => ({ ...svc, systemIds: [] })),
+              dataCategories: prev.dataCategories.map((dc) => ({ ...dc, systemIds: [] })),
+              integrations: [],
+              dataFlows: [],
+            };
+          case 'dataCategories':
+            return {
+              ...prev,
+              dataCategories: [],
+              dataFlows: prev.dataFlows.map((f) => ({ ...f, dataCategoryIds: [] })),
+            };
+          case 'integrations':
+            return { ...prev, integrations: [] };
+          case 'owners':
+            return {
+              ...prev,
+              owners: [],
+              systems: prev.systems.map((s) => ({ ...s, ownerId: undefined })),
+            };
+          case 'sharing':
+            // A flow with nobody at the other end says nothing
+            return { ...prev, externalParties: [], dataFlows: [] };
+        }
+      });
+    },
+    [updateArch],
+  );
+
   // ─── Metadata ───
 
   const setTechFreedomEnabled = useCallback(
@@ -617,6 +689,7 @@ export function ArchitectureProvider({
     updateDataFlow,
     removeDataFlow,
     replaceArchitecture,
+    clearSection,
     setTechFreedomEnabled,
     save,
     clear,

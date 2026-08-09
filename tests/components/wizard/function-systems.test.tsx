@@ -69,6 +69,7 @@ function createMockContext(
     clear: vi.fn().mockResolvedValue(undefined),
     getArchitecture: vi.fn().mockReturnValue(null),
     replaceArchitecture: vi.fn(),
+    clearSection: vi.fn(),
     setTechFreedomEnabled: vi.fn(),
     ...overrides,
   };

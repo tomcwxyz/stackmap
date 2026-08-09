@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -56,6 +56,7 @@ vi.mock('@/hooks/useArchitecture', () => ({
     clear: clearMock,
     updateOrganisation: vi.fn(),
     replaceArchitecture: replaceArchitectureMock,
+    clearSection: vi.fn(),
   }),
 }));
 
@@ -105,8 +106,8 @@ describe('PathSelectorPage', () => {
     render(<PathSelectorPage />);
     const list = screen.getByRole('list', { name: /mapping path options/i });
     expect(list).toBeInTheDocument();
-    const items = screen.getAllByRole('listitem');
-    expect(items).toHaveLength(2);
+    // Scoped to that list: the page also carries the worked examples
+    expect(within(list).getAllByRole('listitem')).toHaveLength(2);
   });
 
   it('navigates to /wizard/techfreedom when function-first path is selected', async () => {
