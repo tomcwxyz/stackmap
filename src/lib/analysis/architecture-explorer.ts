@@ -181,7 +181,6 @@ export function inspectSystemImpact(arch: Architecture, id: string): SystemImpac
   const system = arch.systems.find((s) => s.id === id);
   if (!system) return null;
 
-  const validIds = new Set(arch.systems.map((s) => s.id));
   const services = arch.services.filter((svc) =>
     svc.systemIds.includes(id) || system.serviceIds.includes(svc.id));
   const data = arch.dataCategories.filter((dc) => dc.systemIds.includes(id));
@@ -225,8 +224,8 @@ export function inspectSystemImpact(arch: Architecture, id: string): SystemImpac
     functions: arch.functions.filter((fn) => system.functionIds.includes(fn.id)).map((fn) => fn.name),
     services: services.map((svc) => svc.name),
     data: data.map((dc) => ({ name: dc.name, personal: dc.containsPersonalData, sensitivity: dc.sensitivity })),
-    outgoing: outgoing.filter((item) => validIds.has(arch.systems.find((s) => s.name === item.name)?.id ?? '')),
-    incoming: incoming.filter((item) => validIds.has(arch.systems.find((s) => s.name === item.name)?.id ?? '')),
+    outgoing,
+    incoming,
     recipients,
     annualCost: system.cost ? annualiseCost(system) : undefined,
   };
