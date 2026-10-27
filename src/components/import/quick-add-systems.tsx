@@ -102,7 +102,7 @@ export function QuickAddSystems({
                 Costs, hosting and importance are left unknown rather than guessed.
               </p>
               <ul className="space-y-2 max-h-96 overflow-y-auto" role="list">
-                {candidates.map((candidate) => (
+                {candidates.map((candidate, index) => (
                   <li key={candidate.key} className="bg-white border border-surface-200 rounded-lg p-3 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
                     <div className="min-w-0">
                       <p className="font-medium text-sm text-primary-900">{candidate.name}</p>
@@ -116,11 +116,11 @@ export function QuickAddSystems({
                     </div>
                     {!candidate.alreadyPresent && (
                       <div className="flex flex-col gap-1">
-                        <label htmlFor={'quick-function-' + candidate.key} className="text-xs text-primary-700">
+                        <label htmlFor={'quick-function-' + index} className="text-xs text-primary-700">
                           Organisational area
                         </label>
                         <select
-                          id={'quick-function-' + candidate.key}
+                          id={'quick-function-' + index}
                           value={assignments[candidate.key] ?? candidate.suggestedFunction ?? 'none'}
                           onChange={(event) => setAssignments((previous) => ({
                             ...previous,

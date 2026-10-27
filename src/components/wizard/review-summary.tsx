@@ -4,6 +4,7 @@ import { useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useArchitecture } from '@/hooks/useArchitecture';
+import { MapCoveragePanel } from '@/components/analysis/map-coverage-panel';
 import { aggregateRisk, totalScore, riskLevel, RISK_DIMENSIONS } from '@/lib/techfreedom/risk';
 import { calculateCostSummary, formatCurrency } from '@/lib/cost-analysis';
 import { resolveStaffCount } from '@/lib/cost-estimates';
@@ -168,9 +169,9 @@ export function ReviewSummary() {
           )}
         </div>
         <p className="text-body-lg text-primary-700 pt-1">
-          Well done &mdash; you have mapped{' '}
+          You have recorded{' '}
           <strong className="text-primary-900 font-semibold">{totalItems} items</strong> across
-          your organisation. Here is the full picture.
+          your organisation. Here is what is known and what still needs reviewing.
         </p>
       </div>
 
@@ -192,6 +193,8 @@ export function ReviewSummary() {
           </div>
         ))}
       </div>
+
+      <MapCoveragePanel architecture={architecture} />
 
       {/* Functions & Systems — grouped with colour coding */}
       <section className="space-y-4">
