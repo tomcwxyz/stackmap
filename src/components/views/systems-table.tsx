@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useArchitecture } from '@/hooks/useArchitecture';
 import { SystemEditForm } from './system-edit-form';
+import { MapCoveragePanel } from '@/components/analysis/map-coverage-panel';
 import { annualiseCost, formatCurrency } from '@/lib/cost-analysis';
 import { getImportanceTier } from '@/lib/importance';
 import { riskLevel, totalScore } from '@/lib/techfreedom/risk';
@@ -168,6 +169,8 @@ export function SystemsTable() {
           back through the wizard.
         </p>
       </div>
+
+      <MapCoveragePanel architecture={architecture} />
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 sm:items-end">

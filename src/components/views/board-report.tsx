@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useArchitecture } from '@/hooks/useArchitecture';
 import { findAttentionPoints } from '@/lib/report/attention';
+import { MapCoveragePanel } from '@/components/analysis/map-coverage-panel';
 import { RiskImportanceGrid } from '@/components/analysis/risk-importance-grid';
 import { RenewalTimeline } from '@/components/analysis/renewal-timeline';
 import { buildRiskImportanceMatrix } from '@/lib/analysis/risk-importance';
@@ -153,6 +154,8 @@ export function BoardReport() {
           )}
         </section>
 
+        <MapCoveragePanel architecture={architecture} compact />
+
         {/* What needs attention */}
         <section className="break-inside-avoid" aria-labelledby="report-attention">
           <h2 id="report-attention" className="text-xl font-display font-bold text-primary-900 mb-3">
@@ -160,8 +163,8 @@ export function BoardReport() {
           </h2>
           {attention.length === 0 ? (
             <p className="text-primary-700">
-              Nothing stands out. Every critical system has an owner, no connections were
-              marked fragile, and no systems are flagged as legacy.
+              The current checks did not flag a specific issue. That does not establish that
+              the inventory is complete or the technology is safe. Review the gaps above.
             </p>
           ) : (
             <ul className="space-y-2" role="list">
