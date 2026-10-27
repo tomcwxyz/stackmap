@@ -7,30 +7,14 @@ import type {
   SystemType,
 } from '@/lib/types';
 import { suggestFunction, standardFunctionName } from './suggest-function';
+import { CATEGORY_TO_SYSTEM_TYPE } from './category-to-system-type';
 import type { FunctionSuggestion } from './suggest-function';
 import type { SpendMatch } from './parse-spend';
 
-/** Known tool categories mapped onto the system types the wizard uses. */
-const CATEGORY_TO_TYPE: Record<string, SystemType> = {
-  CRM: 'crm',
-  Finance: 'finance',
-  Payment: 'finance',
-  Email: 'email',
-  Marketing: 'email',
-  Messaging: 'messaging',
-  Communication: 'messaging',
-  Storage: 'document_management',
-  Productivity: 'document_management',
-  CMS: 'website',
-  Hosting: 'website',
-  Database: 'database',
-  'Data Visualisation': 'database',
-  'Project Management': 'database',
-};
 
 function typeFor(match: SpendMatch): SystemType {
   if (!match.tool) return 'other';
-  return CATEGORY_TO_TYPE[match.tool.category] ?? 'other';
+  return CATEGORY_TO_SYSTEM_TYPE[match.tool.category] ?? 'other';
 }
 
 /**
