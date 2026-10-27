@@ -159,7 +159,7 @@ describe('BoardReport', () => {
     expect(within(section).getAllByText(/Lamplight/).length).toBeGreaterThan(0);
   });
 
-  it('says so plainly when nothing needs attention', () => {
+  it('avoids giving false assurance when attention rules find nothing', () => {
     const arch = makeArchitecture();
     arch.systems[1].ownerId = 'own-1';
     arch.systems.push({
@@ -177,7 +177,8 @@ describe('BoardReport', () => {
 
     render(<BoardReport />);
 
-    expect(screen.getByText(/nothing stands out/i)).toBeInTheDocument();
+    expect(screen.getByText(/current checks did not flag a specific issue/i)).toBeInTheDocument();
+    expect(screen.getByText(/does not establish that/i)).toBeInTheDocument();
   });
 
   it('lists the systems the organisation could not operate without', () => {
