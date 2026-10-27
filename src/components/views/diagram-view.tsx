@@ -12,6 +12,7 @@ import {
   generateDataFlowDiagram,
 } from '@/lib/diagram/mermaid';
 import { calculateCostSummary, formatCurrency } from '@/lib/cost-analysis';
+import { ArchitectureExplorer } from './architecture-explorer';
 
 // Dynamic import of the Mermaid renderer — SSR disabled since Mermaid needs DOM
 const MermaidRenderer = dynamic(
@@ -44,6 +45,7 @@ const MODE_LABELS: Record<DiagramMode, string> = {
 
 export function DiagramView({ architecture, isLoading }: DiagramViewProps) {
   const [mode, setMode] = useState<DiagramMode>('full');
+  const [experience, setExperience] = useState<'explore' | 'diagram'>('explore');
   const [zoom, setZoom] = useState(1);
 
   const reviewPath = architecture?.metadata.mappingPath === 'service_first'
@@ -114,7 +116,7 @@ export function DiagramView({ architecture, isLoading }: DiagramViewProps) {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-primary-900 font-display">
-            Architecture diagram
+            Architecture map
           </h1>
           <p className="text-sm text-primary-600 mt-1">
             {architecture.organisation.name || 'Your organisation'}
@@ -163,6 +165,17 @@ export function DiagramView({ architecture, isLoading }: DiagramViewProps) {
         );
       })()}
 
+      <div className="inline-flex flex-wrap gap-2 mb-6" role="group" aria-label="Map presentation">
+        <button type="button" aria-pressed={experience === 'explore'}
+          className={experience === 'explore' ? 'btn-primary text-sm px-4 py-2' : 'btn-secondary text-sm px-4 py-2'}
+          onClick={() => setExperience('explore')}>Explore map</button>
+        <button type="button" aria-pressed={experience === 'diagram'}
+          className={experience === 'diagram' ? 'btn-primary text-sm px-4 py-2' : 'btn-secondary text-sm px-4 py-2'}
+          onClick={() => setExperience('diagram')}>Export diagrams</button>
+      </div>
+
+      {experience === 'diagram' ? (
+        <>
       {/* View mode toggle */}
       <div className="flex items-center gap-2 mb-6">
         {(Object.keys(MODE_LABELS) as DiagramMode[]).map((m) => (
@@ -219,6 +232,10 @@ export function DiagramView({ architecture, isLoading }: DiagramViewProps) {
       >
         <MermaidRenderer syntax={mermaidSyntax} key={mode} id={`diagram-${mode}`} />
       </div>
+        </>
+      ) : (
+        <ArchitectureExplorer architecture={architecture} />
+      )}
     </div>
   );
 }

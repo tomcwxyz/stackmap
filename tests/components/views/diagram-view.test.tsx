@@ -91,21 +91,26 @@ describe('DiagramView', () => {
   it('renders diagram view with toolbar when architecture has data', () => {
     const arch = createTestArchitecture();
     render(<DiagramView architecture={arch} isLoading={false} />);
-    expect(screen.getByText('Architecture diagram')).toBeTruthy();
+    expect(screen.getByText('Architecture map')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Explore connections' })).toBeTruthy();
     expect(screen.getByText('Test Charity')).toBeTruthy();
   });
 
-  it('renders view mode toggle buttons', () => {
+  it('retains the existing diagram view modes under the export tab', async () => {
+    const user = userEvent.setup();
     const arch = createTestArchitecture();
     render(<DiagramView architecture={arch} isLoading={false} />);
+    await user.click(screen.getByRole('button', { name: 'Export diagrams' }));
     expect(screen.getByText('Full diagram')).toBeTruthy();
     expect(screen.getByText('Systems only')).toBeTruthy();
     expect(screen.getByText('Functions only')).toBeTruthy();
   });
 
-  it('renders zoom controls', () => {
+  it('retains zoom controls for the export diagram', async () => {
+    const user = userEvent.setup();
     const arch = createTestArchitecture();
     render(<DiagramView architecture={arch} isLoading={false} />);
+    await user.click(screen.getByRole('button', { name: 'Export diagrams' }));
     expect(screen.getByText('100%')).toBeTruthy();
     expect(screen.getByLabelText('Zoom in')).toBeTruthy();
     expect(screen.getByLabelText('Zoom out')).toBeTruthy();
@@ -120,9 +125,11 @@ describe('DiagramView', () => {
     expect(editLink.closest('a')?.getAttribute('href')).toBe('/wizard/functions/review');
   });
 
-  it('passes mermaid syntax to renderer', () => {
+  it('passes mermaid syntax to renderer in export mode', async () => {
+    const user = userEvent.setup();
     const arch = createTestArchitecture();
     render(<DiagramView architecture={arch} isLoading={false} />);
+    await user.click(screen.getByRole('button', { name: 'Export diagrams' }));
     const renderer = screen.getByTestId('mermaid-renderer');
     // Should contain mermaid graph syntax
     expect(renderer.textContent).toContain('graph TB');
@@ -134,6 +141,7 @@ describe('DiagramView', () => {
     const arch = createTestArchitecture();
     render(<DiagramView architecture={arch} isLoading={false} />);
 
+    await user.click(screen.getByRole('button', { name: 'Export diagrams' }));
     const systemsBtn = screen.getByText('Systems only');
     await user.click(systemsBtn);
 

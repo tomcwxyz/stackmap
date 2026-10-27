@@ -35,6 +35,12 @@ export function Header() {
           {/* Desktop — CTA + optional risk link */}
           <nav className="hidden md:flex items-center gap-4" aria-label="Main navigation">
             <Link
+              href="/view/diagram"
+              className="text-sm font-medium text-primary-700 hover:text-primary-900 transition-colors"
+            >
+              Explore map
+            </Link>
+            <Link
               href="/view/systems"
               className="text-sm font-medium text-primary-700 hover:text-primary-900 transition-colors"
             >
@@ -121,7 +127,7 @@ export function Header() {
               className="block px-3 py-2 rounded-md text-sm font-medium text-primary-700 hover:bg-surface-100 hover:text-primary-900 transition-colors"
               onClick={() => setMobileOpen(false)}
             >
-              Diagram
+              Explore map
             </Link>
             {config.techFreedomAvailable && (
               <Link

@@ -892,3 +892,23 @@ how many entries it holds.
 
 Each asks first and says what goes with it. Clearing cannot be undone, so take a
 snapshot on **Your maps** first if you are not certain.
+
+
+## Explore your architecture
+
+Open **Explore map** in the main navigation after adding systems. The default
+view lets you select a system and inspect its recorded links to organisational
+functions, services, integrations, data categories, and external recipients.
+
+- Use **Organisational area** to focus on systems assigned to one function.
+- Show or hide **Functions**, **Services**, **Data** and **Connections** independently.
+- Select a system to see the direct relationships that warrant checking if it
+  were unavailable, alongside its owner, recorded annual cost and risk score.
+- Choose **Export diagrams** to return to the existing Mermaid diagrams and
+  export them as SVG or PNG.
+
+**Important:** A recorded data transfer is not proof that a recipient would stop
+working if the source failed. Sharing a function or service does not imply a
+direct system integration. Missing lines may simply be missing information.
+The explorer deliberately does not invent dependencies or calculate outage
+costs or savings.
