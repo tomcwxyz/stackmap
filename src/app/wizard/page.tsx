@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useArchitecture } from '@/hooks/useArchitecture';
 import { ImportDialog } from '@/components/import/import-dialog';
 import { ExamplePicker } from '@/components/examples/example-picker';
+import { QuickAddSystems } from '@/components/import/quick-add-systems';
 import { ClearSections } from '@/components/wizard/clear-sections';
 import { addSpendToArchitecture } from '@/lib/import';
 import type { SpendMatch } from '@/lib/import';
@@ -160,6 +161,9 @@ export default function PathSelectorPage() {
       {/* Worked examples, for anyone deciding whether this is worth an
           afternoon before they have typed anything */}
       <ExamplePicker />
+      {architecture && (
+        <QuickAddSystems architecture={architecture} onApply={replaceArchitecture} />
+      )}
 
       {/* Existing data banner */}
       {hasExistingData && !showConfirm && (

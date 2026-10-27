@@ -4,6 +4,8 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useArchitecture } from '@/hooks/useArchitecture';
 import { SystemEditForm } from './system-edit-form';
+import { MapCoveragePanel } from '@/components/analysis/map-coverage-panel';
+import { QuickAddSystems } from '@/components/import/quick-add-systems';
 import { annualiseCost, formatCurrency } from '@/lib/cost-analysis';
 import { getImportanceTier } from '@/lib/importance';
 import { riskLevel, totalScore } from '@/lib/techfreedom/risk';
@@ -89,7 +91,7 @@ function compare(a: System, b: System, key: SortKey, arch: Architecture): number
  * through the whole flow.
  */
 export function SystemsTable() {
-  const { architecture, isLoading, updateSystem, removeSystem } = useArchitecture();
+  const { architecture, isLoading, updateSystem, removeSystem, replaceArchitecture } = useArchitecture();
 
   const [query, setQuery] = useState('');
   const [functionFilter, setFunctionFilter] = useState('all');
@@ -146,9 +148,13 @@ export function SystemsTable() {
           No systems yet
         </h1>
         <p className="text-primary-600 mb-8">
-          Once you have mapped some systems in the wizard, they will all be listed here
-          for you to edit.
+          Add the tools you already know, or use the guided wizard to map your work.
         </p>
+        {architecture && (
+          <div className="text-left mb-6">
+            <QuickAddSystems architecture={architecture} onApply={replaceArchitecture} initiallyOpen />
+          </div>
+        )}
         <Link href="/wizard" className="btn-primary px-6 py-2.5 rounded-lg inline-flex">
           Start mapping
         </Link>
@@ -168,6 +174,10 @@ export function SystemsTable() {
           back through the wizard.
         </p>
       </div>
+
+      <QuickAddSystems architecture={architecture} onApply={replaceArchitecture} />
+
+      <MapCoveragePanel architecture={architecture} />
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
