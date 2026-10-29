@@ -1,5 +1,6 @@
 import type { Architecture, MapActionDecision, MapActionStatus } from '@/lib/types';
 import { assessMapCoverage } from '@/lib/analysis/map-coverage';
+import { assessSystemReviews } from '@/lib/analysis/evidence-freshness';
 import { buildRiskImportanceMatrix } from '@/lib/analysis/risk-importance';
 import { findDuplication } from '@/lib/analysis/duplication';
 import { findRenewals } from '@/lib/analysis/renewals';
@@ -134,6 +135,25 @@ export function buildSuggestedActions(arch: Architecture, at: Date = new Date())
       evidence,
       nextStep: 'Check these records with the relevant staff and add the missing information. An entry is not independent verification.',
       href: check.href,
+    });
+  }
+
+  const freshness = assessSystemReviews(arch, at);
+  if (freshness.due.length || freshness.notChecked.length) {
+    const affected = [...freshness.notChecked, ...freshness.due]
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const evidence = freshness.notChecked.length + ' records not checked; ' +
+      freshness.due.length + ' need a new check (last checked 180+ days ago). ' +
+      'Affected: ' + affected.map((system) => system.name).join(', ');
+    actions.push({
+      id: 'review:system-records',
+      evidenceKey: evidenceKey('review:system-records', 'Review dates', evidence),
+      priority: 'medium',
+      category: 'Governance',
+      title: 'Check the accuracy of system records',
+      evidence,
+      nextStep: 'Ask the relevant staff to review each system, name the evidence source and confirm the record. Existing content and catalogue scores have not been independently verified.',
+      href: '/view/systems',
     });
   }
 

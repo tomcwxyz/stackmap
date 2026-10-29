@@ -929,3 +929,17 @@ the item reopens for review.
 Decisions are stored as part of the active map in your browser. They are included
 when you export JSON, duplicate the map or take a snapshot. Do not rely on a single
 browser as your only backup; export a copy regularly.
+
+## Keep a map trustworthy
+
+In **Your systems**, use **Edit** to record who has checked a system, what evidence
+they used (such as a contract, finance record or discussion with its owner), and
+optional notes. Confirming the record explicitly adds today's review date.
+Simply editing a system never counts as a check; changing its details without
+confirming again clears the previous review.
+
+The inventory, printable board report and **Actions** page distinguish systems
+not yet checked, recently checked and due for another review after 180 days.
+The period is a default review prompt, not a guarantee of accuracy. Review dates
+are self-reported, not independent audits. Previously stored maps and imports
+continue to work without review information.

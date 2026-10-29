@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useArchitecture } from '@/hooks/useArchitecture';
 import { findAttentionPoints } from '@/lib/report/attention';
 import { MapCoveragePanel } from '@/components/analysis/map-coverage-panel';
+import { EvidenceFreshnessPanel } from '@/components/analysis/evidence-freshness-panel';
 import { RiskImportanceGrid } from '@/components/analysis/risk-importance-grid';
 import { RenewalTimeline } from '@/components/analysis/renewal-timeline';
 import { buildRiskImportanceMatrix } from '@/lib/analysis/risk-importance';
@@ -158,6 +159,7 @@ export function BoardReport() {
         </section>
 
         <MapCoveragePanel architecture={architecture} compact />
+        <EvidenceFreshnessPanel architecture={architecture} compact />
 
         {/* What needs attention */}
         <section className="break-inside-avoid" aria-labelledby="report-attention">

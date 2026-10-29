@@ -4,7 +4,11 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useArchitecture } from '@/hooks/useArchitecture';
 import { SystemEditForm } from './system-edit-form';
+import { MobileSystemCards } from './mobile-system-cards';
+import { useCompactMapLayout } from '@/hooks/useCompactMapLayout';
 import { MapCoveragePanel } from '@/components/analysis/map-coverage-panel';
+import { EvidenceFreshnessPanel } from '@/components/analysis/evidence-freshness-panel';
+import { systemReviewState } from '@/lib/analysis/evidence-freshness';
 import { QuickAddSystems } from '@/components/import/quick-add-systems';
 import { annualiseCost, formatCurrency } from '@/lib/cost-analysis';
 import { getImportanceTier } from '@/lib/importance';
@@ -93,6 +97,7 @@ function compare(a: System, b: System, key: SortKey, arch: Architecture): number
 export function SystemsTable() {
   const { architecture, isLoading, updateSystem, removeSystem, replaceArchitecture } = useArchitecture();
 
+  const compact = useCompactMapLayout();
   const [query, setQuery] = useState('');
   const [functionFilter, setFunctionFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -165,7 +170,7 @@ export function SystemsTable() {
   const { systems, functions } = architecture;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+    <div className="max-w-6xl w-full min-w-0 mx-auto px-4 sm:px-6 py-8 space-y-6 overflow-x-hidden">
       <div>
         <h1 className="text-2xl font-bold text-primary-900 font-display">Your systems</h1>
         <p className="text-sm text-primary-600 mt-1">
@@ -178,6 +183,7 @@ export function SystemsTable() {
       <QuickAddSystems architecture={architecture} onApply={replaceArchitecture} />
 
       <MapCoveragePanel architecture={architecture} />
+      <EvidenceFreshnessPanel architecture={architecture} />
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
@@ -238,8 +244,17 @@ export function SystemsTable() {
         Showing {visible.length} of {systems.length}
       </p>
 
-      {/* Table */}
-      <div className="overflow-x-auto border border-surface-200 rounded-lg bg-white">
+      {/* Mobile: full-width cards; desktop: detailed sortable table. */}
+      {compact ? (
+        <MobileSystemCards
+          architecture={architecture}
+          systems={visible}
+          techFreedomEnabled={techFreedomEnabled}
+          updateSystem={updateSystem}
+          removeSystem={removeSystem}
+        />
+      ) : (
+      <div className="max-w-full min-w-0 overflow-x-auto border border-surface-200 rounded-lg bg-white">
         <table className="w-full text-sm">
           <caption className="sr-only">
             Systems in your map, with type, function, owner, status, importance and cost
@@ -310,6 +325,10 @@ export function SystemsTable() {
                         Shadow
                       </span>
                     )}
+                    <span className="block text-xs text-primary-600 mt-1">
+                      {systemReviewState(system) === 'recent' ? 'Recently checked' :
+                        systemReviewState(system) === 'due' ? 'Check due' : 'Not yet checked'}
+                    </span>
                     {system.vendor && (
                       <span className="block text-xs text-primary-500">{system.vendor}</span>
                     )}
@@ -422,6 +441,7 @@ export function SystemsTable() {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }

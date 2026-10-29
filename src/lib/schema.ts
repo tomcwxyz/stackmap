@@ -170,6 +170,13 @@ export const CostSchema = z.object({
   source: CostSourceSchema.optional(),
 });
 
+export const SystemReviewSchema = z.object({
+  checkedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  checkedBy: z.string().trim().min(1).max(150),
+  source: z.enum(['system_owner', 'finance_records', 'supplier', 'contract', 'other']),
+  notes: z.string().max(2000).optional(),
+});
+
 export const SystemSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -193,6 +200,7 @@ export const SystemSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected a date in YYYY-MM-DD form')
     .optional(),
   noticePeriodDays: z.number().min(0).optional(),
+  review: SystemReviewSchema.optional(),
 });
 
 export const DataCategorySchema = z.object({

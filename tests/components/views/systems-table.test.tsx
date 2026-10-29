@@ -289,7 +289,7 @@ describe('SystemsTable', () => {
 
       await user.click(screen.getByRole('button', { name: /edit xero/i }));
       await user.type(screen.getByLabelText(/web address/i), 'https://xero.com');
-      await user.type(screen.getByLabelText(/notes/i), 'Renews in March');
+      await user.type(screen.getByRole('textbox', { name: /^Notes$/ }), 'Renews in March');
       await user.click(screen.getByRole('button', { name: /save changes/i }));
 
       expect(updateSystemMock).toHaveBeenCalledWith(

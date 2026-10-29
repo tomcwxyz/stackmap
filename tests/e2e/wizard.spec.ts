@@ -284,7 +284,7 @@ test.describe('several maps', () => {
       .getByRole('button', { name: /switch to this/i })
       .click();
     await page.waitForURL('**/view/systems');
-    await expect(page.getByRole('cell', { name: 'Xero', exact: true })).toBeVisible();
+    await expect(page.getByRole('cell', { name: /^Xero\b/ })).toBeVisible();
   });
 
   test('puts a snapshot back over the map it was taken from', async ({ page }) => {
@@ -306,8 +306,8 @@ test.describe('several maps', () => {
     await page.getByRole('button', { name: /^restore$/i }).first().click();
 
     await page.goto('/view/systems');
-    await expect(page.getByRole('cell', { name: 'Xero', exact: true })).toBeVisible();
-    await expect(page.getByRole('cell', { name: 'Slack', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('cell', { name: /^Xero\b/ })).toBeVisible();
+    await expect(page.getByRole('cell', { name: /^Slack\b/ })).toHaveCount(0);
   });
 });
 

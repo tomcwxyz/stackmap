@@ -6,7 +6,8 @@ import { Select } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CheckboxGroup } from '@/components/ui/checkbox-group';
 import { RiskDetails } from '@/components/techfreedom/risk-details';
-import type { OrgFunction, Owner, System, SystemType, TechFreedomScore } from '@/lib/types';
+import type { OrgFunction, Owner, System, SystemType, TechFreedomScore, SystemReview } from '@/lib/types';
+import { SYSTEM_REVIEW_SOURCES } from '@/lib/analysis/evidence-freshness';
 
 /** Middle of the 1-5 range, so a hand-scored system starts from neutral. */
 const NEUTRAL_SCORE: TechFreedomScore = {
@@ -89,6 +90,10 @@ interface Draft {
   renewalDate: string;
   noticePeriodDays: string;
   techFreedomScore?: TechFreedomScore;
+  reviewBy: string;
+  reviewSource: SystemReview['source'] | '';
+  reviewNotes: string;
+  confirmReview: boolean;
 }
 
 function toDraft(system: System): Draft {
@@ -111,6 +116,10 @@ function toDraft(system: System): Draft {
     renewalDate: system.renewalDate ?? '',
     noticePeriodDays: system.noticePeriodDays != null ? String(system.noticePeriodDays) : '',
     techFreedomScore: system.techFreedomScore,
+    reviewBy: system.review?.checkedBy ?? '',
+    reviewSource: system.review?.source ?? '',
+    reviewNotes: system.review?.notes ?? '',
+    confirmReview: false,
   };
 }
 
@@ -130,7 +139,7 @@ function toUpdates(draft: Draft, original: System): Partial<Omit<System, 'id'>> 
   const seats = parseInt(draft.seats, 10);
   const notice = parseInt(draft.noticePeriodDays, 10);
 
-  return {
+  const updates: Partial<Omit<System, 'id'>> = {
     name: draft.name.trim(),
     type: draft.type,
     vendor: draft.vendor.trim() || undefined,
@@ -159,6 +168,19 @@ function toUpdates(draft: Draft, original: System): Partial<Omit<System, 'id'>> 
     noticePeriodDays: !isNaN(notice) && notice >= 0 ? notice : undefined,
     techFreedomScore: draft.techFreedomScore,
   };
+  // Any change to the details invalidates an older confirmation, even if the
+  // user did not explicitly alter review fields. Saving unchanged data does not.
+  const modified = (Object.keys(updates) as (keyof typeof updates)[]).some((key) =>
+    JSON.stringify(updates[key]) !== JSON.stringify(original[key]));
+  updates.review = draft.confirmReview && draft.reviewBy.trim() && draft.reviewSource
+    ? {
+        checkedAt: new Date().toISOString().slice(0, 10),
+        checkedBy: draft.reviewBy.trim(),
+        source: draft.reviewSource,
+        notes: draft.reviewNotes.trim() || undefined,
+      }
+    : modified ? undefined : original.review;
+  return updates;
 }
 
 /**
@@ -182,13 +204,15 @@ export function SystemEditForm({
   }
 
   const nameIsEmpty = draft.name.trim().length === 0;
+  const reviewIncomplete = draft.confirmReview &&
+    (!draft.reviewBy.trim() || !draft.reviewSource);
 
   return (
     <form
       className="bg-surface-50 border border-surface-300 rounded-lg p-4 space-y-4"
       onSubmit={(e) => {
         e.preventDefault();
-        if (nameIsEmpty) return;
+        if (nameIsEmpty || reviewIncomplete) return;
         onSave(toUpdates(draft, system));
       }}
     >
@@ -390,6 +414,63 @@ export function SystemEditForm({
         />
       </div>
 
+      <fieldset className="border-t border-surface-300 pt-4 space-y-3">
+        <legend className="font-display font-semibold text-primary-900">Record review</legend>
+        <p className="text-sm text-primary-700">
+          Confirm where the details came from and who checked them. This records
+          a person’s confirmation, not an independent audit.
+        </p>
+        {system.review && (
+          <p className="text-sm text-primary-700">
+            Last checked {system.review.checkedAt} by {system.review.checkedBy}.
+            Editing details without confirming again removes this review date.
+          </p>
+        )}
+        <Input
+          id={`reviewer-${system.id}`}
+          label="Checked by"
+          maxLength={150}
+          value={draft.reviewBy}
+          onChange={(e) => update('reviewBy', e.target.value)}
+          placeholder="Person or role"
+        />
+        <Select
+          id={`review-source-${system.id}`}
+          label="Evidence source"
+          value={draft.reviewSource}
+          onChange={(e) => update('reviewSource', e.target.value as Draft['reviewSource'])}
+        >
+          <option value="">Choose a source</option>
+          {SYSTEM_REVIEW_SOURCES.map((source) => (
+            <option key={source.value} value={source.value}>{source.label}</option>
+          ))}
+        </Select>
+        <div className="space-y-1">
+          <label htmlFor={`review-notes-${system.id}`} className="text-sm font-medium text-primary-900">
+            Evidence notes (optional)
+          </label>
+          <textarea
+            id={`review-notes-${system.id}`}
+            value={draft.reviewNotes}
+            maxLength={2000}
+            onChange={(e) => update('reviewNotes', e.target.value)}
+            rows={2}
+            placeholder="For example, finance records checked or supplier contacted"
+            className="w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-base text-primary-950"
+          />
+        </div>
+        <Checkbox
+          label="I have checked this system record and confirm the details are current"
+          checked={draft.confirmReview}
+          onChange={(e) => update('confirmReview', e.target.checked)}
+        />
+        {reviewIncomplete && (
+          <p role="alert" className="text-sm text-red-800">
+            Add who checked the record and an evidence source to confirm it.
+          </p>
+        )}
+      </fieldset>
+
       {techFreedomEnabled && (
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium text-primary-900 font-body">
@@ -434,7 +515,7 @@ export function SystemEditForm({
       )}
 
       <div className="flex gap-3">
-        <button type="submit" disabled={nameIsEmpty} className="btn-primary disabled:opacity-50">
+        <button type="submit" disabled={nameIsEmpty || reviewIncomplete} className="btn-primary disabled:opacity-50">
           Save changes
         </button>
         <button type="button" onClick={onCancel} className="btn-secondary">
