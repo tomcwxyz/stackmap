@@ -103,15 +103,19 @@ export function migrateArchitecture(raw: unknown): MigrationResult {
   const systems = keepValid(
     asArray(raw.systems)
       .filter(isRecord)
-      .map((sys) => ({
-        ...sys,
-        hosting: sys.hosting ?? 'unknown',
-        status: sys.status ?? 'active',
-        functionIds: asArray(sys.functionIds),
-        serviceIds: asArray(sys.serviceIds),
-        // A date nothing can read costs the user the field, not the system
-        renewalDate: isCalendarDate(sys.renewalDate) ? sys.renewalDate : undefined,
-      })),
+      .map((sys) => {
+        const normalised = {
+          ...sys,
+          hosting: sys.hosting ?? 'unknown',
+          status: sys.status ?? 'active',
+          functionIds: asArray(sys.functionIds),
+          serviceIds: asArray(sys.serviceIds),
+        };
+        // A date nothing can read costs the user the field, not the system.
+        // Do not add an explicit undefined property to an otherwise untouched map.
+        if (!isCalendarDate(sys.renewalDate)) delete normalised.renewalDate;
+        return normalised;
+      }),
     SystemSchema,
   );
 
@@ -198,7 +202,8 @@ export function migrateArchitecture(raw: unknown): MigrationResult {
     owners: owners.kept,
     externalParties: externalParties.kept,
     dataFlows: dataFlows.kept,
-    actionDecisions: decisions.kept,
+    // Old maps should remain byte-shape-compatible until actions are recorded.
+    ...(Array.isArray(raw.actionDecisions) ? { actionDecisions: decisions.kept } : {}),
     metadata: {
       ...metadata,
       version: asString(metadata.version, SCHEMA_VERSION),

@@ -271,7 +271,7 @@ export const ArchitectureSchema = z.object({
   owners: z.array(OwnerSchema),
   externalParties: z.array(ExternalPartySchema),
   dataFlows: z.array(DataFlowSchema),
-  actionDecisions: z.array(MapActionDecisionSchema).default([]),
+  actionDecisions: z.array(MapActionDecisionSchema).optional(),
   metadata: ArchitectureMetadataSchema,
 });
 
