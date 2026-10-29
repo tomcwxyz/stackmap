@@ -912,3 +912,20 @@ working if the source failed. Sharing a function or service does not imply a
 direct system integration. Missing lines may simply be missing information.
 The explorer deliberately does not invent dependencies or calculate outage
 costs or savings.
+
+## Act on what the map reveals
+
+Open **Actions** from the main menu. StackMap uses the information already entered
+about owners, critical tools, data, integrations, contracts and potential overlaps
+to suggest specific checks and improvements. These are prompts for a conversation,
+not a verified risk audit or automatic recommendations to replace software.
+
+Each finding shows why it appeared, the suggested next step and where to review
+the underlying entries. You can select a progress status, record who will follow
+up and keep notes. **Reviewed** or **Not applicable** records your decision; it
+does not claim the original issue was corrected. If the recorded evidence changes,
+the item reopens for review.
+
+Decisions are stored as part of the active map in your browser. They are included
+when you export JSON, duplicate the map or take a snapshot. Do not rely on a single
+browser as your only backup; export a copy regularly.

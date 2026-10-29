@@ -92,6 +92,9 @@ export function BoardReport() {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 print:py-0 print:max-w-none">
       {/* Controls — not part of the report itself */}
       <div className="flex flex-wrap gap-3 justify-end mb-6 print:hidden">
+        <Link href="/view/actions" className="btn-secondary text-sm px-3 py-1.5">
+          Review actions
+        </Link>
         <Link href="/view/systems" className="btn-secondary text-sm px-3 py-1.5">
           Edit your systems
         </Link>
