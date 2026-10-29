@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assessSystemReviews, systemReviewState } from '@/lib/analysis/evidence-freshness';
+import { assessSystemReviews, systemReviewState, applySystemUpdate } from '@/lib/analysis/evidence-freshness';
 import { buildRiversideAdvice } from '@/lib/examples/riverside-advice';
 import { buildSuggestedActions, applyActionDecisions, updateActionDecision } from '@/lib/analysis/action-plan';
 import { migrateArchitecture } from '@/lib/storage/migrate';
@@ -26,6 +26,15 @@ describe('evidence review freshness', () => {
     expect(systemReviewState(system, today)).toBe('not_checked'); // future date
     system.review.checkedAt = '2026-02-31';
     expect(systemReviewState(system, today)).toBe('not_checked');
+  });
+
+  it('invalidates a review when a different editing pathway modifies a record', () => {
+    const original = buildRiversideAdvice().systems[0];
+    original.review = { checkedAt: '2026-10-29', checkedBy: 'Alex', source: 'system_owner' };
+    expect(applySystemUpdate(original, { notes: 'New information' }).review).toBeUndefined();
+    expect(applySystemUpdate(original, { notes: original.notes }).review).toEqual(original.review);
+    expect(applySystemUpdate(original, { name: original.name }).review).toEqual(original.review);
+    expect(original.review).toBeDefined();
   });
 
   it('excludes planned and retiring systems from current review demands', () => {

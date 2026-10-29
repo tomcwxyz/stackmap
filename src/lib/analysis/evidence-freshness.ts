@@ -62,3 +62,22 @@ export const SYSTEM_REVIEW_SOURCES: { value: SystemReview['source']; label: stri
   { value: 'contract', label: 'Contract or agreement' },
   { value: 'other', label: 'Other evidence' },
 ];
+
+/**
+ * Invalidate a checked record when another editor or wizard changes details.
+ * Explicitly supplied review metadata is honoured only by the caller that
+ * obtains a new confirmation; ordinary updates must never silently retain it.
+ */
+export function applySystemUpdate(
+  original: System,
+  updates: Partial<Omit<System, 'id'>>,
+): System {
+  const changed = (Object.keys(updates) as (keyof typeof updates)[]).some((field) =>
+    field !== 'review' && JSON.stringify(updates[field]) !== JSON.stringify(original[field]));
+  const hasReview = Object.prototype.hasOwnProperty.call(updates, 'review');
+  return {
+    ...original,
+    ...updates,
+    review: hasReview ? updates.review : changed ? undefined : original.review,
+  };
+}

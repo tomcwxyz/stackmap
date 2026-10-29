@@ -32,6 +32,7 @@ import {
   type StorageStatus,
 } from '@/hooks/useStorageStatus';
 import { SCHEMA_VERSION, STACKMAP_VERSION } from '@/lib/version';
+import { applySystemUpdate } from '@/lib/analysis/evidence-freshness';
 import { v4 as uuidv4 } from 'uuid';
 
 /** How long to wait after the last change before writing to storage. */
@@ -391,7 +392,7 @@ export function ArchitectureProvider({
     (id: string, updates: Partial<Omit<System, 'id'>>) => {
       updateArch((prev) => ({
         ...prev,
-        systems: prev.systems.map((s) => (s.id === id ? { ...s, ...updates } : s)),
+        systems: prev.systems.map((s) => (s.id === id ? applySystemUpdate(s, updates) : s)),
       }));
     },
     [updateArch],
