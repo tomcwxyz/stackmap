@@ -115,4 +115,41 @@ describe('SystemEditForm', () => {
       expect(screen.queryByText(/what it is used for/i)).not.toBeInTheDocument();
     });
   });
+
+  describe('record evidence', () => {
+    it('does not automatically review a system when simply saving', async () => {
+      const { user, onSave } = renderForm();
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ review: undefined }));
+    });
+
+    it('requires a source and reviewer for explicit confirmation', async () => {
+      const { user, onSave } = renderForm();
+      await user.click(screen.getByRole('checkbox', { name: /i have checked this system record/i }));
+      expect(screen.getByRole('button', { name: /save changes/i })).toBeDisabled();
+      await user.type(screen.getByRole('textbox', { name: 'Checked by' }), 'Alex');
+      await user.selectOptions(screen.getByRole('combobox', { name: 'Evidence source' }), 'contract');
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+        review: expect.objectContaining({ checkedBy: 'Alex', source: 'contract' }),
+      }));
+    });
+
+    it('clears a prior review when details change without fresh confirmation', async () => {
+      const { user, onSave } = renderForm({
+        review: { checkedAt: '2026-09-01', checkedBy: 'Alex', source: 'system_owner' },
+      });
+      await user.clear(screen.getByRole('textbox', { name: 'Supplier' }));
+      await user.type(screen.getByRole('textbox', { name: 'Supplier' }), 'New supplier');
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ review: undefined }));
+    });
+
+    it('preserves a prior review if nothing in the record changes', async () => {
+      const old = { checkedAt: '2026-09-01', checkedBy: 'Alex', source: 'system_owner' as const };
+      const { user, onSave } = renderForm({ review: old });
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ review: old }));
+    });
+  });
 });
