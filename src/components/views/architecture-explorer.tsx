@@ -388,7 +388,7 @@ export function ArchitectureExplorer({ architecture }: ArchitectureExplorerProps
               <LayerCheckbox label="Connections" checked={layers.connections}
                 onChange={(checked) => setLayer('connections', checked)} />
             </fieldset>
-          )>
+          )}
         </div>
         <p className="text-xs text-primary-600">
           Showing {graph.systemCount} of {graph.totalSystems} systems.
