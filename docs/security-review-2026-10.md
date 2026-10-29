@@ -53,3 +53,5 @@ npm advisory (full and production graph). Low findings remain visible
 in the detailed report and workflow artifacts; they are **not** silently
 exempted or deemed harmless. Update this review when the dependency
 graph changes.
+
+The audit runs on pull requests, dependency changes to main, and weekly on Monday at 07:00 UTC. Moderate or worse findings fail the audit workflow and are not suppressed by a baseline. Review the logs and uploaded JSON artifacts if alerts arise.
