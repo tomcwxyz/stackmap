@@ -4,6 +4,8 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useArchitecture } from '@/hooks/useArchitecture';
 import { SystemEditForm } from './system-edit-form';
+import { MobileSystemCards } from './mobile-system-cards';
+import { useCompactMapLayout } from '@/hooks/useCompactMapLayout';
 import { MapCoveragePanel } from '@/components/analysis/map-coverage-panel';
 import { EvidenceFreshnessPanel } from '@/components/analysis/evidence-freshness-panel';
 import { systemReviewState } from '@/lib/analysis/evidence-freshness';
@@ -95,6 +97,7 @@ function compare(a: System, b: System, key: SortKey, arch: Architecture): number
 export function SystemsTable() {
   const { architecture, isLoading, updateSystem, removeSystem, replaceArchitecture } = useArchitecture();
 
+  const compact = useCompactMapLayout();
   const [query, setQuery] = useState('');
   const [functionFilter, setFunctionFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -241,10 +244,16 @@ export function SystemsTable() {
         Showing {visible.length} of {systems.length}
       </p>
 
-      {/* Table */}
-      <p className="text-xs text-primary-600 sm:hidden">
-        Swipe the table sideways to see more details.
-      </p>
+      {/* Mobile: full-width cards; desktop: detailed sortable table. */}
+      {compact ? (
+        <MobileSystemCards
+          architecture={architecture}
+          systems={visible}
+          techFreedomEnabled={techFreedomEnabled}
+          updateSystem={updateSystem}
+          removeSystem={removeSystem}
+        />
+      ) : (
       <div className="max-w-full min-w-0 overflow-x-auto border border-surface-200 rounded-lg bg-white">
         <table className="w-full text-sm">
           <caption className="sr-only">
@@ -432,6 +441,7 @@ export function SystemsTable() {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }
