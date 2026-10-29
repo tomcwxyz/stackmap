@@ -703,8 +703,11 @@ export function ArchitectureProvider({
     [saveState, saveError, loadReport],
   );
 
+  // The context only exposes event/effect callbacks that access the pending
+  // save ref when invoked; passing them here does not read ref.current in render.
   return createElement(
     ArchitectureContext.Provider,
+    // eslint-disable-next-line react-hooks/refs
     { value },
     createElement(StorageStatusProvider, { value: storageStatus }, children),
   );
