@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { Architecture, System } from '@/lib/types';
 import { formatCurrency, annualiseCost } from '@/lib/cost-analysis';
 
@@ -8,11 +8,14 @@ interface MobileSystemListProps {
   architecture: Architecture;
   systems: System[];
   onInspect: (id: string) => void;
+  query: string;
+  onQueryChange: (query: string) => void;
 }
 
 /** A readable, searchable alternative to a full-width graph on a phone. */
-export function MobileSystemList({ architecture, systems, onInspect }: MobileSystemListProps) {
-  const [query, setQuery] = useState('');
+export function MobileSystemList({
+  architecture, systems, onInspect, query, onQueryChange,
+}: MobileSystemListProps) {
   const visible = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase('en-GB');
     if (!needle) return systems;
@@ -35,7 +38,7 @@ export function MobileSystemList({ architecture, systems, onInspect }: MobileSys
           type="search"
           autoComplete="off"
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => onQueryChange(event.target.value)}
           placeholder="Search by name, supplier or area"
           className="w-full rounded-lg border border-surface-300 bg-white px-3 py-3 text-base text-primary-950"
         />

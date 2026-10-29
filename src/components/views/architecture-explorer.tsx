@@ -296,6 +296,8 @@ function InteractiveGraph({
 export function ArchitectureExplorer({ architecture }: ArchitectureExplorerProps) {
   const compact = useCompactMapLayout();
   const [mobileMode, setMobileMode] = useState<'browse' | 'network'>('browse');
+  // Keep the search when drilling into a system and returning to the list.
+  const [mobileQuery, setMobileQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [functionId, setFunctionId] = useState('');
   const [layers, setLayers] = useState({
@@ -434,6 +436,8 @@ export function ArchitectureExplorer({ architecture }: ArchitectureExplorerProps
             <MobileSystemList
               architecture={architecture}
               systems={visibleSystems}
+              query={mobileQuery}
+              onQueryChange={setMobileQuery}
               onInspect={setSelectedId}
             />
           ) : (
