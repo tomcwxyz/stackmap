@@ -24,8 +24,12 @@ jobs:
         run: |
           # Re-resolve from the declared top-level versions: npm 10's Arborist
           # cannot reconcile this old Next 14 graph with Next 16 in-place.
+          npm install --global npm@11
           rm package-lock.json
-          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          if ! npm install --package-lock-only --ignore-scripts --no-audit --no-fund; then
+            tail -120 "$(ls -t "$HOME"/.npm/_logs/*-debug-0.log | head -1)"
+            exit 1
+          fi
           npm audit fix --package-lock-only --ignore-scripts --no-fund || true
       - name: Commit lockfile on dedicated security branch
         run: |
