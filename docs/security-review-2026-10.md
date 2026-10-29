@@ -32,3 +32,24 @@ or browser-side dependencies such as Mermaid.
 The dependency audit workflow retains full machine-readable npm JSON
 results for each security PR. Neither a lower audit count nor a green
 build substitutes for checking actual advisory exposure.
+
+## Verified residual findings
+
+The regenerated 29 October 2026 lockfile yields **two low-severity
+entries** in the full graph and the production graph; **no medium,
+high or critical advisories** remain. Both entries are caused by the
+`mermaid@11.17.2` dependency on `katex`:
+
+- [GHSA-238p-pmpm-9mq7](https://github.com/advisories/GHSA-238p-pmpm-9mq7):
+  KaTeX trust-restriction bypass in the presence of existing prototype
+  pollution. npm attributes this both to KaTeX and to its parent Mermaid.
+- npm proposes `mermaid@12.2.0` (a breaking major) to resolve those
+  two low advisories. Keep Mermaid 11.17.2 with the current strict SVG
+  rendering configuration for this security patch, and evaluate Mermaid
+  12 independently with diagram/export regression tests.
+
+The dependency-audit CI job fails for any new *moderate, high or critical*
+npm advisory (full and production graph). Low findings remain visible
+in the detailed report and workflow artifacts; they are **not** silently
+exempted or deemed harmless. Update this review when the dependency
+graph changes.
