@@ -23,22 +23,5 @@ test('system evidence is explicitly confirmed, stays across reloads and becomes 
   await page.getByRole('textbox', { name: 'Supplier' }).fill('Changed provider');
   await page.getByRole('button', { name: 'Save changes' }).click();
   await expect(page.getByText('Not yet checked')).toBeVisible();
-  const overflow = await page.evaluate(() => {
-    const width = window.innerWidth;
-    return {
-      viewport: width,
-      scrollWidth: document.documentElement.scrollWidth,
-      offenders: Array.from(document.querySelectorAll<HTMLElement>('body *'))
-        .filter((node) => node.getBoundingClientRect().right > width + 1)
-        .slice(0, 12)
-        .map((node) => ({
-          tag: node.tagName,
-          className: typeof node.className === 'string' ? node.className.slice(0, 140) : '',
-          text: node.textContent?.trim().slice(0, 40),
-          right: Math.round(node.getBoundingClientRect().right),
-        })),
-    };
-  });
-  console.log('Mobile overflow diagnostic:', JSON.stringify(overflow));
-  expect(overflow.scrollWidth <= overflow.viewport + 1).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 });

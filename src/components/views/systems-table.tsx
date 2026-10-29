@@ -167,7 +167,7 @@ export function SystemsTable() {
   const { systems, functions } = architecture;
 
   return (
-    <div className="max-w-6xl w-full min-w-0 mx-auto px-4 sm:px-6 py-8 space-y-6 overflow-x-clip">
+    <div className="max-w-6xl w-full min-w-0 mx-auto px-4 sm:px-6 py-8 space-y-6 overflow-x-hidden">
       <div>
         <h1 className="text-2xl font-bold text-primary-900 font-display">Your systems</h1>
         <p className="text-sm text-primary-600 mt-1">
