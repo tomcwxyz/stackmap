@@ -8,6 +8,8 @@ test('system evidence is explicitly confirmed, stays across reloads and becomes 
   await page.getByRole('button', { name: /add 1 system to the map/i }).click();
   await page.waitForTimeout(750);
   await page.goto('/view/systems');
+  await expect(page.getByTestId('mobile-system-cards')).toBeVisible();
+  await expect(page.getByRole('table')).toHaveCount(0);
   await expect(page.getByText('Not yet checked')).toBeVisible();
   await page.getByRole('button', { name: 'Edit Xero' }).click();
   await page.getByRole('textbox', { name: 'Checked by' }).fill('Alex');
