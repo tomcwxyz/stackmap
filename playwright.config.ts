@@ -41,7 +41,7 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: `npx next dev --port ${PORT}`,
+    command: `npx next dev --webpack --port ${PORT}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
