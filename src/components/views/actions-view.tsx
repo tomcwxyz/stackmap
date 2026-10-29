@@ -129,11 +129,11 @@ export function ActionsView() {
   }
   if (!architecture || architecture.systems.length === 0) {
     return (
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-12 space-y-4">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12 space-y-4">
         <h1 className="font-display text-2xl font-bold text-primary-950">Your actions</h1>
         <p className="text-primary-700">Add some systems first, then StackMap can suggest things worth checking.</p>
         <Link className="btn-primary inline-block" href="/wizard">Start mapping</Link>
-      </main>
+      </div>
     );
   }
 
@@ -154,7 +154,7 @@ export function ActionsView() {
   ) => replaceArchitecture(updateActionDecision(architecture, action, changes));
 
   return (
-    <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       <header className="space-y-2">
         <h1 className="font-display text-3xl font-bold text-primary-950">Your actions</h1>
         <p className="text-primary-700 max-w-3xl">
@@ -220,6 +220,6 @@ export function ActionsView() {
             onClick={() => { setFilter('all'); setPriority('all'); }}>Show all findings</button>
         </section>
       )}
-    </main>
+    </div>
   );
 }
