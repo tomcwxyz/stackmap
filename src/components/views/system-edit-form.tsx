@@ -418,7 +418,7 @@ export function SystemEditForm({
         <legend className="font-display font-semibold text-primary-900">Record review</legend>
         <p className="text-sm text-primary-700">
           Confirm where the details came from and who checked them. This records
-          a person's confirmation, not an independent audit.
+          a person’s confirmation, not an independent audit.
         </p>
         {system.review && (
           <p className="text-sm text-primary-700">
