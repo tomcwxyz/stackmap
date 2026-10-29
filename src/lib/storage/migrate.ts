@@ -9,6 +9,7 @@ import {
   OwnerSchema,
   ExternalPartySchema,
   DataFlowSchema,
+  MapActionDecisionSchema,
 } from '@/lib/schema';
 import type { Architecture } from '@/lib/types';
 import { SCHEMA_VERSION, STACKMAP_VERSION } from '@/lib/version';
@@ -165,7 +166,10 @@ export function migrateArchitecture(raw: unknown): MigrationResult {
     DataFlowSchema,
   );
 
+  const decisions = keepValid(asArray(raw.actionDecisions), MapActionDecisionSchema);
+
   const droppedCount =
+    decisions.dropped +
     functions.dropped +
     services.dropped +
     systems.dropped +
@@ -194,6 +198,7 @@ export function migrateArchitecture(raw: unknown): MigrationResult {
     owners: owners.kept,
     externalParties: externalParties.kept,
     dataFlows: dataFlows.kept,
+    actionDecisions: decisions.kept,
     metadata: {
       ...metadata,
       version: asString(metadata.version, SCHEMA_VERSION),
@@ -222,6 +227,7 @@ const COLLECTION_KEYS = [
   'owners',
   'externalParties',
   'dataFlows',
+  'actionDecisions',
 ] as const;
 
 /** Count collection entries that were not objects, since those are dropped too. */

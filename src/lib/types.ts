@@ -210,6 +210,20 @@ export interface DataFlow {
 
 export type MappingPath = 'function_first' | 'service_first';
 
+/** A human decision about one generated finding, saved with this map. */
+export type MapActionStatus = 'open' | 'planned' | 'in_progress' | 'reviewed' | 'dismissed';
+
+export interface MapActionDecision {
+  /** Stable finding id, not a user-supplied title. */
+  id: string;
+  /** Evidence when the decision was made. A change requires another review. */
+  evidenceKey: string;
+  status: MapActionStatus;
+  owner?: string;
+  note?: string;
+  updatedAt: string;
+}
+
 export interface Architecture {
   organisation: Organisation;
   functions: OrgFunction[];
@@ -220,6 +234,8 @@ export interface Architecture {
   owners: Owner[];
   externalParties: ExternalParty[];
   dataFlows: DataFlow[];
+  /** Optional for maps created before the Actions view existed. */
+  actionDecisions?: MapActionDecision[];
   metadata: {
     version: string;
     exportedAt: string;
