@@ -104,7 +104,7 @@ export function migrateArchitecture(raw: unknown): MigrationResult {
     asArray(raw.systems)
       .filter(isRecord)
       .map((sys) => {
-        const normalised = {
+        const normalised: Record<string, unknown> = {
           ...sys,
           hosting: sys.hosting ?? 'unknown',
           status: sys.status ?? 'active',
