@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useArchitecture } from '@/hooks/useArchitecture';
 import { SystemEditForm } from './system-edit-form';
 import { MapCoveragePanel } from '@/components/analysis/map-coverage-panel';
+import { EvidenceFreshnessPanel } from '@/components/analysis/evidence-freshness-panel';
+import { systemReviewState } from '@/lib/analysis/evidence-freshness';
 import { QuickAddSystems } from '@/components/import/quick-add-systems';
 import { annualiseCost, formatCurrency } from '@/lib/cost-analysis';
 import { getImportanceTier } from '@/lib/importance';
@@ -178,6 +180,7 @@ export function SystemsTable() {
       <QuickAddSystems architecture={architecture} onApply={replaceArchitecture} />
 
       <MapCoveragePanel architecture={architecture} />
+      <EvidenceFreshnessPanel architecture={architecture} />
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
@@ -310,6 +313,10 @@ export function SystemsTable() {
                         Shadow
                       </span>
                     )}
+                    <span className="block text-xs text-primary-600 mt-1">
+                      {systemReviewState(system) === 'recent' ? 'Recently checked' :
+                        systemReviewState(system) === 'due' ? 'Check due' : 'Not yet checked'}
+                    </span>
                     {system.vendor && (
                       <span className="block text-xs text-primary-500">{system.vendor}</span>
                     )}
