@@ -43,7 +43,9 @@ export function MobileSystemCards({
               </p>
               <p className="text-sm text-primary-600">
                 {system.cost ? formatCurrency(annualiseCost(system)) + '/year' : 'Cost not recorded'}
-                {' · '}{review === 'recent' ? 'Recently checked' :
+              </p>
+              <p className="text-sm text-primary-600">
+                {review === 'recent' ? 'Recently checked' :
                   review === 'due' ? 'Check due' : 'Not yet checked'}
               </p>
             </div>
