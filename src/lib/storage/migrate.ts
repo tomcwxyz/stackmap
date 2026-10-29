@@ -9,6 +9,7 @@ import {
   OwnerSchema,
   ExternalPartySchema,
   DataFlowSchema,
+  MapActionDecisionSchema,
 } from '@/lib/schema';
 import type { Architecture } from '@/lib/types';
 import { SCHEMA_VERSION, STACKMAP_VERSION } from '@/lib/version';
@@ -102,15 +103,19 @@ export function migrateArchitecture(raw: unknown): MigrationResult {
   const systems = keepValid(
     asArray(raw.systems)
       .filter(isRecord)
-      .map((sys) => ({
-        ...sys,
-        hosting: sys.hosting ?? 'unknown',
-        status: sys.status ?? 'active',
-        functionIds: asArray(sys.functionIds),
-        serviceIds: asArray(sys.serviceIds),
-        // A date nothing can read costs the user the field, not the system
-        renewalDate: isCalendarDate(sys.renewalDate) ? sys.renewalDate : undefined,
-      })),
+      .map((sys) => {
+        const normalised: Record<string, unknown> = {
+          ...sys,
+          hosting: sys.hosting ?? 'unknown',
+          status: sys.status ?? 'active',
+          functionIds: asArray(sys.functionIds),
+          serviceIds: asArray(sys.serviceIds),
+        };
+        // A date nothing can read costs the user the field, not the system.
+        // Do not add an explicit undefined property to an otherwise untouched map.
+        if (!isCalendarDate(sys.renewalDate)) delete normalised.renewalDate;
+        return normalised;
+      }),
     SystemSchema,
   );
 
@@ -165,7 +170,10 @@ export function migrateArchitecture(raw: unknown): MigrationResult {
     DataFlowSchema,
   );
 
+  const decisions = keepValid(asArray(raw.actionDecisions), MapActionDecisionSchema);
+
   const droppedCount =
+    decisions.dropped +
     functions.dropped +
     services.dropped +
     systems.dropped +
@@ -194,6 +202,8 @@ export function migrateArchitecture(raw: unknown): MigrationResult {
     owners: owners.kept,
     externalParties: externalParties.kept,
     dataFlows: dataFlows.kept,
+    // Old maps should remain byte-shape-compatible until actions are recorded.
+    ...(Array.isArray(raw.actionDecisions) ? { actionDecisions: decisions.kept } : {}),
     metadata: {
       ...metadata,
       version: asString(metadata.version, SCHEMA_VERSION),
@@ -222,6 +232,7 @@ const COLLECTION_KEYS = [
   'owners',
   'externalParties',
   'dataFlows',
+  'actionDecisions',
 ] as const;
 
 /** Count collection entries that were not objects, since those are dropped too. */

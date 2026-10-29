@@ -139,6 +139,7 @@ function createBlankArchitecture(mappingPath: MappingPath = 'function_first'): A
     owners: [],
     externalParties: [],
     dataFlows: [],
+    actionDecisions: [],
     metadata: {
       version: SCHEMA_VERSION,
       exportedAt: now,

@@ -252,6 +252,15 @@ export const ArchitectureMetadataSchema = z.object({
   techFreedomEnabled: z.boolean().optional().default(false),
 });
 
+export const MapActionDecisionSchema = z.object({
+  id: z.string().min(1).max(180),
+  evidenceKey: z.string().min(1).max(12000),
+  status: z.enum(['open', 'planned', 'in_progress', 'reviewed', 'dismissed']),
+  owner: z.string().max(150).optional(),
+  note: z.string().max(2000).optional(),
+  updatedAt: z.string().min(1),
+});
+
 export const ArchitectureSchema = z.object({
   organisation: OrganisationSchema,
   functions: z.array(OrgFunctionSchema),
@@ -262,6 +271,7 @@ export const ArchitectureSchema = z.object({
   owners: z.array(OwnerSchema),
   externalParties: z.array(ExternalPartySchema),
   dataFlows: z.array(DataFlowSchema),
+  actionDecisions: z.array(MapActionDecisionSchema).optional(),
   metadata: ArchitectureMetadataSchema,
 });
 
