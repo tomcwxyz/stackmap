@@ -171,7 +171,7 @@ export const CostSchema = z.object({
 });
 
 export const SystemReviewSchema = z.object({
-  checkedAt: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/),
+  checkedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   checkedBy: z.string().trim().min(1).max(150),
   source: z.enum(['system_owner', 'finance_records', 'supplier', 'contract', 'other']),
   notes: z.string().max(2000).optional(),
