@@ -73,6 +73,14 @@ export type SystemType =
   | 'custom'
   | 'other';
 
+/** A person's dated confirmation of a system record, not independent assurance. */
+export interface SystemReview {
+  checkedAt: string; // YYYY-MM-DD
+  checkedBy: string;
+  source: 'system_owner' | 'finance_records' | 'supplier' | 'contract' | 'other';
+  notes?: string;
+}
+
 export interface System {
   id: string;
   name: string;
@@ -109,6 +117,8 @@ export interface System {
   renewalDate?: string;
   /** How much warning the supplier needs before you can leave, in days. */
   noticePeriodDays?: number;
+  /** Explicit, self-reported confirmation of the details in this system record. */
+  review?: SystemReview;
 }
 
 /** Article 6 lawful bases, in the wording the ICO uses. */

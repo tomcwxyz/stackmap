@@ -4,6 +4,7 @@ import {
   OrgFunctionSchema,
   ServiceSchema,
   SystemSchema,
+  SystemReviewSchema,
   DataCategorySchema,
   IntegrationSchema,
   OwnerSchema,
@@ -100,6 +101,7 @@ export function migrateArchitecture(raw: unknown): MigrationResult {
     ServiceSchema,
   );
 
+  let invalidReviews = 0;
   const systems = keepValid(
     asArray(raw.systems)
       .filter(isRecord)
@@ -114,6 +116,11 @@ export function migrateArchitecture(raw: unknown): MigrationResult {
         // A date nothing can read costs the user the field, not the system.
         // Do not add an explicit undefined property to an otherwise untouched map.
         if (!isCalendarDate(sys.renewalDate)) delete normalised.renewalDate;
+        // Invalid review metadata must not cause the entire system to vanish.
+        if (normalised.review != null && !SystemReviewSchema.safeParse(normalised.review).success) {
+          delete normalised.review;
+          invalidReviews++;
+        }
         return normalised;
       }),
     SystemSchema,
@@ -173,6 +180,7 @@ export function migrateArchitecture(raw: unknown): MigrationResult {
   const decisions = keepValid(asArray(raw.actionDecisions), MapActionDecisionSchema);
 
   const droppedCount =
+    invalidReviews +
     decisions.dropped +
     functions.dropped +
     services.dropped +
