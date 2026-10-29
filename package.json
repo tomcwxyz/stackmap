@@ -4,7 +4,7 @@
   "private": true,
   "description": "Lightweight architecture mapping for social purpose organisations",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "build": "npm run build:app && python -m mkdocs build -d out/docs",
     "build:app": "next build --webpack",
     "build:docs": "python -m mkdocs build -d out/docs",
