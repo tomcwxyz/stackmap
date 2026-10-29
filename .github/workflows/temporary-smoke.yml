@@ -1,0 +1,22 @@
+name: Temporary browser smoke
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-actions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Verify one mobile workflow after React and Next migration
+        run: npx playwright test tests/e2e/actions.spec.ts --retries=0 --timeout=15000 --reporter=list
