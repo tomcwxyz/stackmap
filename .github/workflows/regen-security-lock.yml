@@ -1,0 +1,37 @@
+name: Regenerate security lockfile
+
+on:
+  push:
+    branches: [fix/dependency-security-2026-10]
+
+permissions:
+  contents: write
+
+jobs:
+  update-lock:
+    if: "startsWith(github.event.head_commit.message, 'security(upgrade):')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/dependency-security-2026-10
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Resolve declared upgrades without running install scripts
+        run: |
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          npm audit fix --package-lock-only --ignore-scripts --no-fund || true
+      - name: Commit lockfile on dedicated security branch
+        run: |
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git config user.name 'github-actions[bot]'
+          git add package-lock.json
+          if git diff --cached --quiet; then
+            echo 'Lockfile already matches updated dependency graph.'
+          else
+            git commit -m 'chore(lock): regenerate security dependency graph'
+            git push origin HEAD:refs/heads/fix/dependency-security-2026-10
+          fi
