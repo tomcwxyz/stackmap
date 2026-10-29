@@ -1,10 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { Architecture } from '@/lib/types';
 import { formatCurrency } from '@/lib/cost-analysis';
 import { riskLevel, totalScore } from '@/lib/techfreedom/risk';
+import { useCompactMapLayout } from '@/hooks/useCompactMapLayout';
+import { MobileSystemList } from './mobile-system-list';
 import {
   buildExplorerGraph,
   inspectSystemImpact,
@@ -161,12 +163,21 @@ function ImpactDetails({ architecture, systemId }: { architecture: Architecture;
 }
 
 function InteractiveGraph({
-  graph, selectedId, onSelect,
+  graph, selectedId, onSelect, compact = false,
 }: {
   graph: ReturnType<typeof buildExplorerGraph>;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  compact?: boolean;
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!compact || !scrollRef.current) return;
+    // Start by showing the system column, rather than a cut-off function card.
+    const firstSystem = graph.nodes.find((node) => node.kind === 'system');
+    scrollRef.current.scrollLeft = Math.max(0, (firstSystem?.x ?? 0) - 20);
+    scrollRef.current.scrollTop = 0;
+  }, [compact, graph]);
   const nodeIndex = useMemo(
     () => new Map(graph.nodes.map((node) => [node.id, node])),
     [graph.nodes],
@@ -177,7 +188,11 @@ function InteractiveGraph({
   );
   return (
     <div
-      className="overflow-auto border border-surface-300 rounded-xl bg-surface-50"
+      ref={scrollRef}
+      className={
+        'w-full min-w-0 overflow-auto border border-surface-300 rounded-xl bg-surface-50 ' +
+        (compact ? 'max-h-[65vh] overscroll-contain' : '')
+      }
       role="region"
       aria-label="Interactive architecture map"
       tabIndex={0}
@@ -279,6 +294,10 @@ function InteractiveGraph({
 }
 
 export function ArchitectureExplorer({ architecture }: ArchitectureExplorerProps) {
+  const compact = useCompactMapLayout();
+  const [mobileMode, setMobileMode] = useState<'browse' | 'network'>('browse');
+  // Keep the search when drilling into a system and returning to the list.
+  const [mobileQuery, setMobileQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [functionId, setFunctionId] = useState('');
   const [layers, setLayers] = useState({
@@ -294,6 +313,14 @@ export function ArchitectureExplorer({ architecture }: ArchitectureExplorerProps
     }),
     [architecture, functionId, layers],
   );
+  const visibleSystems = useMemo(() => {
+    const included = new Set(graph.nodes
+      .filter((node) => node.kind === 'system')
+      .map((node) => node.id.slice('system:'.length)));
+    return architecture.systems
+      .filter((system) => included.has(system.id))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [architecture.systems, graph.nodes]);
   const setLayer = (layer: LayerName, value: boolean) => {
     setLayers((prev) => ({ ...prev, [layer]: value }));
   };
@@ -334,28 +361,99 @@ export function ArchitectureExplorer({ architecture }: ArchitectureExplorerProps
               ))}
             </select>
           </label>
-          <fieldset className="flex flex-wrap gap-x-4 gap-y-2">
-            <legend className="text-xs font-medium text-primary-700 mb-1">Show links to</legend>
-            <LayerCheckbox label="Functions" checked={layers.functions}
-              onChange={(checked) => setLayer('functions', checked)} />
-            <LayerCheckbox label="Services" checked={layers.services}
-              onChange={(checked) => setLayer('services', checked)} />
-            <LayerCheckbox label="Data" checked={layers.data}
-              onChange={(checked) => setLayer('data', checked)} />
-            <LayerCheckbox label="Connections" checked={layers.connections}
-              onChange={(checked) => setLayer('connections', checked)} />
-          </fieldset>
+          {compact ? (
+            <details className="w-full border-t border-surface-200 pt-2">
+              <summary className="cursor-pointer text-sm font-semibold text-primary-800">
+                Map layers and connections
+              </summary>
+              <fieldset className="mt-3 flex flex-wrap gap-x-5 gap-y-3">
+                <legend className="sr-only">Show links to</legend>
+                <LayerCheckbox label="Functions" checked={layers.functions}
+                  onChange={(checked) => setLayer('functions', checked)} />
+                <LayerCheckbox label="Services" checked={layers.services}
+                  onChange={(checked) => setLayer('services', checked)} />
+                <LayerCheckbox label="Data" checked={layers.data}
+                  onChange={(checked) => setLayer('data', checked)} />
+                <LayerCheckbox label="Connections" checked={layers.connections}
+                  onChange={(checked) => setLayer('connections', checked)} />
+              </fieldset>
+            </details>
+          ) : (
+            <fieldset className="flex flex-wrap gap-x-4 gap-y-2">
+              <legend className="text-xs font-medium text-primary-700 mb-1">Show links to</legend>
+              <LayerCheckbox label="Functions" checked={layers.functions}
+                onChange={(checked) => setLayer('functions', checked)} />
+              <LayerCheckbox label="Services" checked={layers.services}
+                onChange={(checked) => setLayer('services', checked)} />
+              <LayerCheckbox label="Data" checked={layers.data}
+                onChange={(checked) => setLayer('data', checked)} />
+              <LayerCheckbox label="Connections" checked={layers.connections}
+                onChange={(checked) => setLayer('connections', checked)} />
+            </fieldset>
+          )}
         </div>
         <p className="text-xs text-primary-600">
-          Showing {graph.systemCount} of {graph.totalSystems} systems ·
-          Solid arrows are recorded data or system connections; dashed lines indicate
-          functional, service or data associations. Shared areas do not imply direct integrations.
+          Showing {graph.systemCount} of {graph.totalSystems} systems.
+          {compact
+            ? ' Select a system to investigate its recorded relationships.'
+            : ' Solid arrows show recorded system integrations; dashed lines show associations. Shared areas do not imply direct integrations.'}
         </p>
       </div>
 
       {graph.systemCount === 0 ? (
         <div className="border border-surface-300 rounded-xl bg-white p-8">
           <p className="text-primary-700">No systems belong to this area yet. Choose another area or add systems.</p>
+        </div>
+      ) : compact ? (
+        <div className="space-y-3" data-testid="mobile-architecture-explorer">
+          <div className="grid grid-cols-2 gap-2" role="group" aria-label="Mobile map view">
+            <button
+              type="button"
+              aria-pressed={mobileMode === 'browse'}
+              className={mobileMode === 'browse' ? 'btn-primary text-sm py-2.5' : 'btn-secondary text-sm py-2.5'}
+              onClick={() => { setMobileMode('browse'); setSelectedId(null); }}
+            >
+              Browse systems
+            </button>
+            <button
+              type="button"
+              aria-pressed={mobileMode === 'network'}
+              className={mobileMode === 'network' ? 'btn-primary text-sm py-2.5' : 'btn-secondary text-sm py-2.5'}
+              onClick={() => { setMobileMode('network'); setSelectedId(null); }}
+            >
+              Full network
+            </button>
+          </div>
+          {selectedId ? (
+            <div className="space-y-3">
+              <button type="button" className="btn-secondary text-sm px-3 py-2"
+                onClick={() => setSelectedId(null)}>
+                ← Back to {mobileMode === 'browse' ? 'systems' : 'network'}
+              </button>
+              <ImpactDetails architecture={architecture} systemId={selectedId} />
+            </div>
+          ) : mobileMode === 'browse' ? (
+            <MobileSystemList
+              architecture={architecture}
+              systems={visibleSystems}
+              query={mobileQuery}
+              onQueryChange={setMobileQuery}
+              onInspect={setSelectedId}
+            />
+          ) : (
+            <div className="space-y-2">
+              <p className="text-sm text-primary-700">
+                Swipe horizontally to see other layers, and vertically to explore more systems.
+                Select a system for a focused view.
+              </p>
+              <InteractiveGraph
+                graph={graph}
+                compact
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+              />
+            </div>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-4 items-start">

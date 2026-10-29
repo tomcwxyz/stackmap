@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { ArchitectureExplorer } from '@/components/views/architecture-explorer';
 import { buildRiversideAdvice } from '@/lib/examples/riverside-advice';
 
@@ -13,6 +13,54 @@ vi.mock('next/link', () => ({
 }));
 
 describe('ArchitectureExplorer', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  function useMobileViewport() {
+    vi.stubGlobal('matchMedia', vi.fn().mockImplementation(() => ({
+      matches: true,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })));
+  }
+
+  it('starts with an uncluttered system list on a phone', async () => {
+    useMobileViewport();
+    render(<ArchitectureExplorer architecture={buildRiversideAdvice()} />);
+    expect(await screen.findByTestId('mobile-architecture-explorer')).toBeInTheDocument();
+    expect(screen.getByRole('searchbox', { name: 'Find a system' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Inspect Lamplight' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Interactive architecture map' })).not.toBeInTheDocument();
+  });
+
+  it('filters by search, displays impact, and returns to the list', async () => {
+    useMobileViewport();
+    const user = userEvent.setup();
+    render(<ArchitectureExplorer architecture={buildRiversideAdvice()} />);
+    await screen.findByTestId('mobile-architecture-explorer');
+    await user.type(screen.getByRole('searchbox', { name: 'Find a system' }), 'lamplight');
+    expect(screen.getByRole('button', { name: 'Inspect Lamplight' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Inspect Xero' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Inspect Lamplight' }));
+    expect(screen.getByRole('heading', { name: 'What if this system were unavailable?' })).toBeInTheDocument();
+    expect(screen.getByText('Debt advice drop-in')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '← Back to systems' }));
+    expect(screen.getByRole('searchbox', { name: 'Find a system' })).toHaveValue('lamplight');
+  });
+
+  it('keeps the full network accessible on mobile without making it the default', async () => {
+    useMobileViewport();
+    const user = userEvent.setup();
+    render(<ArchitectureExplorer architecture={buildRiversideAdvice()} />);
+    await screen.findByTestId('mobile-architecture-explorer');
+    await user.click(screen.getByRole('button', { name: 'Full network' }));
+    expect(screen.getByRole('region', { name: 'Interactive architecture map' })).toBeInTheDocument();
+    expect(screen.getByText(/Swipe horizontally to see other layers/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Inspect Xero' }));
+    expect(screen.getByRole('button', { name: '← Back to network' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '← Back to network' }));
+    expect(screen.getByRole('region', { name: 'Interactive architecture map' })).toBeInTheDocument();
+  });
+
   it('shows a usable map with visible systems before a selection', () => {
     render(<ArchitectureExplorer architecture={buildRiversideAdvice()} />);
     expect(screen.getByRole('heading', { name: 'Explore connections' })).toBeInTheDocument();
