@@ -167,7 +167,7 @@ export function SystemsTable() {
   const { systems, functions } = architecture;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+    <div className="max-w-6xl w-full min-w-0 mx-auto px-4 sm:px-6 py-8 space-y-6 overflow-x-clip">
       <div>
         <h1 className="text-2xl font-bold text-primary-900 font-display">Your systems</h1>
         <p className="text-sm text-primary-600 mt-1">
@@ -242,7 +242,10 @@ export function SystemsTable() {
       </p>
 
       {/* Table */}
-      <div className="overflow-x-auto border border-surface-200 rounded-lg bg-white">
+      <p className="text-xs text-primary-600 sm:hidden">
+        Swipe the table sideways to see more details.
+      </p>
+      <div className="max-w-full min-w-0 overflow-x-auto border border-surface-200 rounded-lg bg-white">
         <table className="w-full text-sm">
           <caption className="sr-only">
             Systems in your map, with type, function, owner, status, importance and cost
