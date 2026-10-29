@@ -1,0 +1,33 @@
+name: Dependency audit
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install exactly the lockfile
+        run: npm ci
+      - name: Audit production and full dependency graphs
+        run: |
+          npm audit --json > audit-full.json || true
+          npm audit --omit=dev --json > audit-production.json || true
+          node scripts/security-audit-report.mjs audit-full.json audit-production.json
+      - name: Retain complete audit evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit
+          path: |
+            audit-full.json
+            audit-production.json
+          retention-days: 30
