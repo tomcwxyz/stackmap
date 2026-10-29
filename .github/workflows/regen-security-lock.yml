@@ -22,6 +22,9 @@ jobs:
           cache: npm
       - name: Resolve declared upgrades without running install scripts
         run: |
+          # Re-resolve from the declared top-level versions: npm 10's Arborist
+          # cannot reconcile this old Next 14 graph with Next 16 in-place.
+          rm package-lock.json
           npm install --package-lock-only --ignore-scripts --no-audit --no-fund
           npm audit fix --package-lock-only --ignore-scripts --no-fund || true
       - name: Commit lockfile on dedicated security branch
